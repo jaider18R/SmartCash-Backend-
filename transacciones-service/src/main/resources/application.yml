@@ -7,7 +7,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/transacciones_db
     username: transacciones_user
-    password: ${DB_PASSWORD:Transaccion58}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
@@ -19,4 +19,5 @@ spring:
 smartcash:
   jwt:
     # DEBE ser exactamente el mismo secreto que usuarios-auth
-    secret: ${JWT_SECRET:una-clave-secreta-muy-larga-cambiar-en-produccion-1234567890}
+    secret: ${JWT_SECRET}
+
