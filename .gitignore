@@ -3,7 +3,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-### STS ###
+
 .apt_generated
 .classpath
 .factorypath
@@ -21,7 +21,7 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
-### NetBeans ###
+
 /nbproject/private/
 /nbbuild/
 /dist/
@@ -29,15 +29,14 @@ out/
 /nbactions.xml
 /nb-configuration.xml
 
-### VS Code ###
 .vscode/
 
-### Logs & OS ###
+
 *.log
 .DS_Store
 Thumbs.db
 
-### Environment files ###
+
 .env
 *.env
 !.env.example
