@@ -50,7 +50,6 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- JWT: transacciones-service valida el token emitido por usuarios-auth -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>

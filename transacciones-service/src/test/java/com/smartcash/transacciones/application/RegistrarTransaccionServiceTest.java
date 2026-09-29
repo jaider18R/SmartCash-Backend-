@@ -14,11 +14,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-/**
- * Esta es la ventaja practica de la arquitectura hexagonal + DIP:
- * probamos la REGLA DE NEGOCIO sin levantar Spring, sin base de datos,
- * sin HTTP -- solo con "dobles" (mocks) de los puertos.
- */
 class RegistrarTransaccionServiceTest {
 
     @Test

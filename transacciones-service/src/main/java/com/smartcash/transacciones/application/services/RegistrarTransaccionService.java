@@ -11,12 +11,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-/**
- * SRP: coordina el caso de uso "registrar transaccion" -- validar, clasificar, guardar.
- * DIP: depende de dos puertos (RepositorioTransaccionPort, ClasificadorTransaccionPort),
- * ninguno de los dos una clase concreta. No importa si el clasificador es hoy un mock
- * y manana una llamada real a Python: este servicio no cambia una linea.
- */
 @Service
 public class RegistrarTransaccionService implements RegistrarTransaccionUseCase {
 
