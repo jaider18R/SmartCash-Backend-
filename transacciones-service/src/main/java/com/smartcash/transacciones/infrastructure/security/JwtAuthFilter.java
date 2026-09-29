@@ -18,11 +18,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
-/**
- * Valida el JWT emitido por usuarios-auth. Ambos microservicios comparten
- * el mismo "smartcash.jwt.secret" (via variable de entorno) -- asi
- * transacciones-service puede confiar en un token que el NO emitio.
- */
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 

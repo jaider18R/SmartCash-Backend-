@@ -18,6 +18,4 @@ spring:
 
 smartcash:
   jwt:
-    # DEBE ser exactamente el mismo secreto que usuarios-auth
     secret: ${JWT_SECRET}
-

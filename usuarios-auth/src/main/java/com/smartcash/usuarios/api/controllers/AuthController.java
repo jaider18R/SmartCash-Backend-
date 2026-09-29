@@ -10,11 +10,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * Capa API: SOLO traduce HTTP <-> casos de uso. No contiene logica de negocio.
- * SRP estricto: si la regla de negocio cambia, este archivo no se toca;
- * si cambia el formato de entrada/salida HTTP, este es el unico que se toca.
- */
 @RestController
 @RequestMapping("/auth")
 public class AuthController {

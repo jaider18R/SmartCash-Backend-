@@ -3,10 +3,6 @@ package com.smartcash.usuarios.domain.model;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * Entidad de dominio pura. No conoce JPA, Spring, ni ningun detalle de infraestructura.
- * Esto es lo que la arquitectura hexagonal protege: la regla de negocio no depende de la tecnologia.
- */
 public class Usuario {
 
     private final UUID id;

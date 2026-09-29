@@ -4,11 +4,6 @@ import com.smartcash.usuarios.domain.ports.out.PasswordEncoderPort;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
-/**
- * OCP en accion: si mañana queremos cambiar de BCrypt a Argon2, creamos
- * OTRO adaptador que implemente PasswordEncoderPort. Ninguna clase que
- * use el puerto (RegistrarUsuarioService, LoginService) se modifica.
- */
 @Component
 public class BCryptPasswordEncoderAdapter implements PasswordEncoderPort {
 
