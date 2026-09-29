@@ -6,11 +6,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
-/**
- * Adaptador de salida: implementa el puerto RepositorioUsuarioPort usando JPA.
- * Traduce entre el modelo de dominio (Usuario) y la entidad de persistencia
- * (UsuarioJpaEntity). Es el UNICO lugar del sistema que conoce ambos mundos.
- */
 @Component
 public class UsuarioRepositoryAdapter implements RepositorioUsuarioPort {
 

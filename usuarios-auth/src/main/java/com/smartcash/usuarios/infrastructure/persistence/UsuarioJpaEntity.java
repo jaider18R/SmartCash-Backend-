@@ -5,11 +5,6 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * Entidad JPA. Este es el "detalle" de infraestructura -- vive separada del
- * modelo de dominio (Usuario.java) a proposito. Si manana cambiamos de ORM
- * o de motor de base de datos, esta clase cambia y el dominio NO se entera.
- */
 @Entity
 @Table(name = "usuarios")
 public class UsuarioJpaEntity {
@@ -32,7 +27,7 @@ public class UsuarioJpaEntity {
     private LocalDateTime fechaRegistro;
 
     protected UsuarioJpaEntity() {
-        // constructor vacio requerido por JPA
+
     }
 
     public UsuarioJpaEntity(UUID idUsuario, String nombre, String correo,

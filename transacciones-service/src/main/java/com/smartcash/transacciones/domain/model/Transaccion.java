@@ -8,12 +8,12 @@ public class Transaccion {
 
     private final UUID id;
     private final UUID idUsuario;
-    private final UUID idCategoria;          // puede ser null: aun no categorizada
+    private final UUID idCategoria;
     private final BigDecimal monto;
     private final LocalDate fecha;
     private final String comercio;
-    private final String tipoMovimiento;      // "ingreso" | "gasto"
-    private final Double confianzaCategorizacion; // puede ser null
+    private final String tipoMovimiento;
+    private final Double confianzaCategorizacion;
 
     public Transaccion(UUID id, UUID idUsuario, UUID idCategoria, BigDecimal monto,
                         LocalDate fecha, String comercio, String tipoMovimiento,
@@ -33,7 +33,6 @@ public class Transaccion {
         return new Transaccion(null, idUsuario, null, monto, fecha, comercio, tipoMovimiento, null);
     }
 
-    /** Devuelve una copia inmutable con la categoria ya asignada (el dominio nunca "muta" en sitio). */
     public Transaccion conCategoria(UUID idCategoria, double confianza) {
         return new Transaccion(this.id, this.idUsuario, idCategoria, this.monto,
                 this.fecha, this.comercio, this.tipoMovimiento, confianza);

@@ -7,15 +7,6 @@ import com.smartcash.usuarios.domain.ports.out.PasswordEncoderPort;
 import com.smartcash.usuarios.domain.ports.out.RepositorioUsuarioPort;
 import org.springframework.stereotype.Service;
 
-/**
- * DIP: esta clase depende UNICAMENTE de interfaces (puertos), nunca de una
- * implementacion concreta (no conoce JPA, no conoce BCrypt directamente).
- * Spring inyecta en tiempo de ejecucion cual adaptador usar.
- *
- * SRP: la unica razon por la que esta clase cambia es si cambia la REGLA
- * de negocio de "como se registra un usuario" (por ejemplo, si se agrega
- * una validacion de dominio nueva).
- */
 @Service
 public class RegistrarUsuarioService implements RegistrarUsuarioUseCase {
 
