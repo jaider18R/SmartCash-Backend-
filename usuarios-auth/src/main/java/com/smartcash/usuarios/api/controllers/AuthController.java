@@ -16,11 +16,17 @@ public class AuthController {
 
     private final RegistrarUsuarioUseCase registrarUsuarioUseCase;
     private final LoginUseCase loginUseCase;
+    private final com.smartcash.usuarios.domain.ports.in.SolicitarRecuperacionUseCase solicitarRecuperacionUseCase;
+    private final com.smartcash.usuarios.domain.ports.in.RestablecerPasswordUseCase restablecerPasswordUseCase;
 
     public AuthController(RegistrarUsuarioUseCase registrarUsuarioUseCase,
-                           LoginUseCase loginUseCase) {
+                           LoginUseCase loginUseCase,
+                           com.smartcash.usuarios.domain.ports.in.SolicitarRecuperacionUseCase solicitarRecuperacionUseCase,
+                           com.smartcash.usuarios.domain.ports.in.RestablecerPasswordUseCase restablecerPasswordUseCase) {
         this.registrarUsuarioUseCase = registrarUsuarioUseCase;
         this.loginUseCase = loginUseCase;
+        this.solicitarRecuperacionUseCase = solicitarRecuperacionUseCase;
+        this.restablecerPasswordUseCase = restablecerPasswordUseCase;
     }
 
     @PostMapping("/registro")
@@ -34,5 +40,17 @@ public class AuthController {
     public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
         String token = loginUseCase.login(request.correo(), request.password());
         return ResponseEntity.ok(LoginResponseDTO.of(token));
+    }
+
+    @PostMapping("/recuperar-password")
+    public ResponseEntity<MensajeResponseDTO> solicitarRecuperacion(@Valid @RequestBody RecuperarPasswordRequestDTO request) {
+        solicitarRecuperacionUseCase.solicitar(request.correo());
+        return ResponseEntity.ok(new MensajeResponseDTO("Si el correo esta registrado, recibiras las instrucciones en tu bandeja de entrada."));
+    }
+
+    @PostMapping("/restablecer-password")
+    public ResponseEntity<MensajeResponseDTO> restablecerPassword(@Valid @RequestBody RestablecerPasswordRequestDTO request) {
+        restablecerPasswordUseCase.restablecer(request.token(), request.nuevaPassword());
+        return ResponseEntity.ok(new MensajeResponseDTO("Contrasena actualizada con exito. Ya puedes iniciar sesion."));
     }
 }

@@ -34,6 +34,11 @@ public class UsuarioRepositoryAdapter implements RepositorioUsuarioPort {
     }
 
     @Override
+    public Optional<Usuario> buscarPorId(java.util.UUID id) {
+        return jpaRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
     public boolean existePorCorreo(String correo) {
         return jpaRepository.existsByCorreo(correo);
     }
