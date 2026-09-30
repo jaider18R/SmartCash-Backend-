@@ -39,7 +39,7 @@ public class SolicitarRecuperacionService implements SolicitarRecuperacionUseCas
         PasswordResetToken resetToken = PasswordResetToken.nuevo(usuario.getId(), token);
         repositorioToken.guardar(resetToken);
 
-        String enlace = "http://localhost:3000/restablecer-password?token=" + token;
+        String enlace = "http://localhost:5173/?token=" + token;
         notificacionClient.enviarRecuperacionPassword(usuario.getCorreo(), usuario.getNombre(), enlace);
     }
 }
