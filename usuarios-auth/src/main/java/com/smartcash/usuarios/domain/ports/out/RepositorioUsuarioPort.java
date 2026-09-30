@@ -7,5 +7,6 @@ import java.util.Optional;
 public interface RepositorioUsuarioPort {
     Usuario guardar(Usuario usuario);
     Optional<Usuario> buscarPorCorreo(String correo);
+    Optional<Usuario> buscarPorId(java.util.UUID id);
     boolean existePorCorreo(String correo);
 }

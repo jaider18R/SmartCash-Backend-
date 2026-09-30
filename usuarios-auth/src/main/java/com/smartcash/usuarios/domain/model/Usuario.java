@@ -28,4 +28,8 @@ public class Usuario {
     public String getCorreo() { return correo; }
     public String getPasswordHash() { return passwordHash; }
     public LocalDateTime getFechaRegistro() { return fechaRegistro; }
+
+    public Usuario conPasswordHash(String nuevoPasswordHash) {
+        return new Usuario(this.id, this.nombre, this.correo, nuevoPasswordHash, this.fechaRegistro);
+    }
 }
