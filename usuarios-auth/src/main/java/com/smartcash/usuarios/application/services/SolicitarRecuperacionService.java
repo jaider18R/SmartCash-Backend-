@@ -17,14 +17,17 @@ public class SolicitarRecuperacionService implements SolicitarRecuperacionUseCas
     private final RepositorioUsuarioPort repositorioUsuario;
     private final RepositorioTokenRecuperacionPort repositorioToken;
     private final NotificacionClientPort notificacionClient;
+    private final String frontendUrl;
 
     public SolicitarRecuperacionService(
             RepositorioUsuarioPort repositorioUsuario,
             RepositorioTokenRecuperacionPort repositorioToken,
-            NotificacionClientPort notificacionClient) {
+            NotificacionClientPort notificacionClient,
+            @org.springframework.beans.factory.annotation.Value("${smartcash.frontend.url:http://192.168.1.7:5173}") String frontendUrl) {
         this.repositorioUsuario = repositorioUsuario;
         this.repositorioToken = repositorioToken;
         this.notificacionClient = notificacionClient;
+        this.frontendUrl = frontendUrl;
     }
 
     @Override
@@ -39,7 +42,7 @@ public class SolicitarRecuperacionService implements SolicitarRecuperacionUseCas
         PasswordResetToken resetToken = PasswordResetToken.nuevo(usuario.getId(), token);
         repositorioToken.guardar(resetToken);
 
-        String enlace = "http://localhost:5173/?token=" + token;
+        String enlace = frontendUrl + "/?token=" + token;
         notificacionClient.enviarRecuperacionPassword(usuario.getCorreo(), usuario.getNombre(), enlace);
     }
 }
