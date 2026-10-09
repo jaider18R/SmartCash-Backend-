@@ -16,11 +16,14 @@ public class RegistrarTransaccionService implements RegistrarTransaccionUseCase 
 
     private final RepositorioTransaccionPort repositorioTransaccion;
     private final ClasificadorTransaccionPort clasificador;
+    private final com.smartcash.transacciones.domain.ports.in.VerificarPresupuestoUseCase verificarPresupuestoUseCase;
 
     public RegistrarTransaccionService(RepositorioTransaccionPort repositorioTransaccion,
-                                        ClasificadorTransaccionPort clasificador) {
+                                        ClasificadorTransaccionPort clasificador,
+                                        com.smartcash.transacciones.domain.ports.in.VerificarPresupuestoUseCase verificarPresupuestoUseCase) {
         this.repositorioTransaccion = repositorioTransaccion;
         this.clasificador = clasificador;
+        this.verificarPresupuestoUseCase = verificarPresupuestoUseCase;
     }
 
     @Override
@@ -36,7 +39,18 @@ public class RegistrarTransaccionService implements RegistrarTransaccionUseCase 
         Transaccion transaccionCategorizada = transaccion.conCategoria(
                 resultado.idCategoria(), resultado.confianza());
 
-        return repositorioTransaccion.guardar(transaccionCategorizada);
+        Transaccion guardada = repositorioTransaccion.guardar(transaccionCategorizada);
+
+        if ("gasto".equalsIgnoreCase(tipoMovimiento) && guardada.getIdCategoria() != null) {
+            verificarPresupuestoUseCase.verificarPresupuesto(
+                    guardada.getIdUsuario(),
+                    guardada.getIdCategoria(),
+                    guardada.getFecha(),
+                    guardada.getMonto()
+            );
+        }
+
+        return guardada;
     }
 
     private void validar(BigDecimal monto, String comercio, String tipoMovimiento) {
