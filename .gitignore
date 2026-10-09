@@ -41,3 +41,13 @@ Thumbs.db
 *.env
 !.env.example
 
+### Python ###
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+*.sqlite
+*.sqlite3
+.pytest_cache/
+
