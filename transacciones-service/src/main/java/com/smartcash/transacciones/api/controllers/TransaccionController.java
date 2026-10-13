@@ -35,13 +35,53 @@ public class TransaccionController {
     }
 
     @GetMapping
-    public ResponseEntity<java.util.List<TransaccionResponseDTO>> listar(org.springframework.security.core.Authentication authentication) {
+    public ResponseEntity<java.util.List<TransaccionResponseDTO>> listar(
+            @RequestParam(required = false) String tipo,
+            @RequestParam(required = false) UUID categoriaId,
+            @RequestParam(required = false) java.time.LocalDate desde,
+            @RequestParam(required = false) java.time.LocalDate hasta,
+            @RequestParam(required = false) String buscar,
+            org.springframework.security.core.Authentication authentication) {
         UUID idUsuario = UUID.fromString((String) authentication.getPrincipal());
+        
         java.util.List<TransaccionResponseDTO> transacciones = registrarTransaccionUseCase.listarPorUsuario(idUsuario)
                 .stream()
+                .filter(t -> tipo == null || t.getTipoMovimiento().equalsIgnoreCase(tipo))
+                .filter(t -> categoriaId == null || categoriaId.equals(t.getIdCategoria()))
+                .filter(t -> desde == null || !t.getFecha().isBefore(desde))
+                .filter(t -> hasta == null || !t.getFecha().isAfter(hasta))
+                .filter(t -> buscar == null || t.getComercio().toLowerCase().contains(buscar.toLowerCase()))
                 .map(TransaccionMapper::toResponseDTO)
                 .toList();
         return ResponseEntity.ok(transacciones);
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<TransaccionResponseDTO> actualizar(
+            @PathVariable UUID id,
+            @Valid @RequestBody com.smartcash.transacciones.api.dto.ActualizarTransaccionRequestDTO request,
+            org.springframework.security.core.Authentication authentication) {
+        UUID idUsuario = UUID.fromString((String) authentication.getPrincipal());
+        Transaccion actualizada = registrarTransaccionUseCase.actualizar(
+                idUsuario,
+                id,
+                request.monto(),
+                request.fecha(),
+                request.comercio(),
+                request.tipoMovimiento(),
+                request.idCategoria()
+        );
+        return ResponseEntity.ok(TransaccionMapper.toResponseDTO(actualizada));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(
+            @PathVariable UUID id,
+            org.springframework.security.core.Authentication authentication) {
+        UUID idUsuario = UUID.fromString((String) authentication.getPrincipal());
+        registrarTransaccionUseCase.eliminar(idUsuario, id);
+        return ResponseEntity.noContent().build();
+    }
 }
+
 

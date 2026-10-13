@@ -39,9 +39,20 @@ public class TransaccionRepositoryAdapter implements RepositorioTransaccionPort 
     }
 
     @Override
+    public java.util.Optional<Transaccion> buscarPorId(UUID idTransaccion) {
+        return jpaRepository.findById(idTransaccion).map(this::toDomain);
+    }
+
+    @Override
+    public void eliminar(UUID idTransaccion) {
+        jpaRepository.deleteById(idTransaccion);
+    }
+
+    @Override
     public java.math.BigDecimal calcularGastoAcumulado(UUID idUsuario, UUID idCategoria, java.time.LocalDate desde, java.time.LocalDate hasta) {
         return jpaRepository.sumMontoGastosPorUsuarioCategoriaYPeriodo(idUsuario, idCategoria, desde, hasta);
     }
+
 
 
     private Transaccion toDomain(TransaccionJpaEntity entity) {

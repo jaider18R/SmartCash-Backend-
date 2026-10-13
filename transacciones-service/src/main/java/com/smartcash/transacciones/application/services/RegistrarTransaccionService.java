@@ -66,9 +66,61 @@ public class RegistrarTransaccionService implements RegistrarTransaccionUseCase 
     }
 
     @Override
+    public Transaccion actualizar(UUID idUsuario, UUID idTransaccion, BigDecimal monto, LocalDate fecha,
+                                   String comercio, String tipoMovimiento, UUID idCategoria) {
+        validar(monto, comercio, tipoMovimiento);
+
+        Transaccion existente = repositorioTransaccion.buscarPorId(idTransaccion)
+                .orElseThrow(() -> new TransaccionInvalidaException("Transaccion no encontrada"));
+
+        if (!existente.getIdUsuario().equals(idUsuario)) {
+            throw new TransaccionInvalidaException("No tiene permisos para modificar esta transaccion");
+        }
+
+        UUID categoriaFinal = idCategoria != null ? idCategoria : existente.getIdCategoria();
+
+        Transaccion actualizada = new Transaccion(
+                existente.getId(),
+                idUsuario,
+                categoriaFinal,
+                monto,
+                fecha,
+                comercio,
+                tipoMovimiento,
+                existente.getConfianzaCategorizacion()
+        );
+
+        Transaccion guardada = repositorioTransaccion.guardar(actualizada);
+
+        if ("gasto".equalsIgnoreCase(tipoMovimiento) && guardada.getIdCategoria() != null) {
+            verificarPresupuestoUseCase.verificarPresupuesto(
+                    guardada.getIdUsuario(),
+                    guardada.getIdCategoria(),
+                    guardada.getFecha(),
+                    guardada.getMonto()
+            );
+        }
+
+        return guardada;
+    }
+
+    @Override
+    public void eliminar(UUID idUsuario, UUID idTransaccion) {
+        Transaccion existente = repositorioTransaccion.buscarPorId(idTransaccion)
+                .orElseThrow(() -> new TransaccionInvalidaException("Transaccion no encontrada"));
+
+        if (!existente.getIdUsuario().equals(idUsuario)) {
+            throw new TransaccionInvalidaException("No tiene permisos para eliminar esta transaccion");
+        }
+
+        repositorioTransaccion.eliminar(idTransaccion);
+    }
+
+    @Override
     public java.util.List<Transaccion> listarPorUsuario(UUID idUsuario) {
         return repositorioTransaccion.listarPorUsuario(idUsuario);
     }
+
 
     private String obtenerCorreoUsuario() {
 
