@@ -17,13 +17,16 @@ public class RegistrarTransaccionService implements RegistrarTransaccionUseCase 
     private final RepositorioTransaccionPort repositorioTransaccion;
     private final ClasificadorTransaccionPort clasificador;
     private final com.smartcash.transacciones.domain.ports.in.VerificarPresupuestoUseCase verificarPresupuestoUseCase;
+    private final com.smartcash.transacciones.domain.ports.out.AlertaNotificacionPort alertaNotificacionPort;
 
     public RegistrarTransaccionService(RepositorioTransaccionPort repositorioTransaccion,
                                         ClasificadorTransaccionPort clasificador,
-                                        com.smartcash.transacciones.domain.ports.in.VerificarPresupuestoUseCase verificarPresupuestoUseCase) {
+                                        com.smartcash.transacciones.domain.ports.in.VerificarPresupuestoUseCase verificarPresupuestoUseCase,
+                                        com.smartcash.transacciones.domain.ports.out.AlertaNotificacionPort alertaNotificacionPort) {
         this.repositorioTransaccion = repositorioTransaccion;
         this.clasificador = clasificador;
         this.verificarPresupuestoUseCase = verificarPresupuestoUseCase;
+        this.alertaNotificacionPort = alertaNotificacionPort;
     }
 
     @Override
@@ -33,25 +36,44 @@ public class RegistrarTransaccionService implements RegistrarTransaccionUseCase 
 
         Transaccion transaccion = Transaccion.nueva(idUsuario, monto, fecha, comercio, tipoMovimiento);
 
-        ClasificadorTransaccionPort.ResultadoClasificacion resultado =
-                clasificador.clasificar(comercio, monto);
+        ClasificadorTransaccionPort.ResultadoClasificacionDetallada resultado =
+                clasificador.clasificarConDetalle(idUsuario, comercio, monto);
 
         Transaccion transaccionCategorizada = transaccion.conCategoria(
                 resultado.idCategoria(), resultado.confianza());
 
         Transaccion guardada = repositorioTransaccion.guardar(transaccionCategorizada);
 
-        if ("gasto".equalsIgnoreCase(tipoMovimiento) && guardada.getIdCategoria() != null) {
-            verificarPresupuestoUseCase.verificarPresupuesto(
-                    guardada.getIdUsuario(),
-                    guardada.getIdCategoria(),
-                    guardada.getFecha(),
-                    guardada.getMonto()
-            );
+        if ("gasto".equalsIgnoreCase(tipoMovimiento)) {
+            if (resultado.esInusual()) {
+                String correo = obtenerCorreoUsuario();
+                alertaNotificacionPort.enviarAlertaGastoInusual(
+                        correo, comercio, monto, resultado.alertaInusual()
+                );
+            }
+
+            if (guardada.getIdCategoria() != null) {
+                verificarPresupuestoUseCase.verificarPresupuesto(
+                        guardada.getIdUsuario(),
+                        guardada.getIdCategoria(),
+                        guardada.getFecha(),
+                        guardada.getMonto()
+                );
+            }
         }
 
         return guardada;
     }
+
+    private String obtenerCorreoUsuario() {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof String email && !email.isBlank()) {
+            return email;
+        }
+        return null;
+    }
+
 
     private void validar(BigDecimal monto, String comercio, String tipoMovimiento) {
         if (monto == null || monto.compareTo(BigDecimal.ZERO) <= 0) {

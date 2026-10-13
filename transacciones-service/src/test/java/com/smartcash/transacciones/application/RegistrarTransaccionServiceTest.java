@@ -21,7 +21,8 @@ class RegistrarTransaccionServiceTest {
         RepositorioTransaccionPort repoMock = mock(RepositorioTransaccionPort.class);
         ClasificadorTransaccionPort clasificadorMock = mock(ClasificadorTransaccionPort.class);
         com.smartcash.transacciones.domain.ports.in.VerificarPresupuestoUseCase verificarPresupuestoMock = mock(com.smartcash.transacciones.domain.ports.in.VerificarPresupuestoUseCase.class);
-        RegistrarTransaccionService service = new RegistrarTransaccionService(repoMock, clasificadorMock, verificarPresupuestoMock);
+        com.smartcash.transacciones.domain.ports.out.AlertaNotificacionPort alertaMock = mock(com.smartcash.transacciones.domain.ports.out.AlertaNotificacionPort.class);
+        RegistrarTransaccionService service = new RegistrarTransaccionService(repoMock, clasificadorMock, verificarPresupuestoMock, alertaMock);
 
         assertThrows(TransaccionInvalidaException.class, () ->
                 service.registrar(UUID.randomUUID(), BigDecimal.ZERO, LocalDate.now(), "Rappi", "gasto"));
@@ -32,13 +33,14 @@ class RegistrarTransaccionServiceTest {
         RepositorioTransaccionPort repoMock = mock(RepositorioTransaccionPort.class);
         ClasificadorTransaccionPort clasificadorMock = mock(ClasificadorTransaccionPort.class);
         com.smartcash.transacciones.domain.ports.in.VerificarPresupuestoUseCase verificarPresupuestoMock = mock(com.smartcash.transacciones.domain.ports.in.VerificarPresupuestoUseCase.class);
+        com.smartcash.transacciones.domain.ports.out.AlertaNotificacionPort alertaMock = mock(com.smartcash.transacciones.domain.ports.out.AlertaNotificacionPort.class);
 
         UUID idCategoria = UUID.randomUUID();
-        when(clasificadorMock.clasificar(eq("Rappi"), any()))
-                .thenReturn(new ClasificadorTransaccionPort.ResultadoClasificacion(idCategoria, 0.9));
+        when(clasificadorMock.clasificarConDetalle(any(), eq("Rappi"), any()))
+                .thenReturn(new ClasificadorTransaccionPort.ResultadoClasificacionDetallada(idCategoria, 0.9, 1L, false, null));
         when(repoMock.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        RegistrarTransaccionService service = new RegistrarTransaccionService(repoMock, clasificadorMock, verificarPresupuestoMock);
+        RegistrarTransaccionService service = new RegistrarTransaccionService(repoMock, clasificadorMock, verificarPresupuestoMock, alertaMock);
 
         Transaccion resultado = service.registrar(
                 UUID.randomUUID(), new BigDecimal("25000"), LocalDate.now(), "Rappi", "gasto");
@@ -48,4 +50,5 @@ class RegistrarTransaccionServiceTest {
         verify(repoMock, times(1)).guardar(any());
         verify(verificarPresupuestoMock, times(1)).verificarPresupuesto(any(), eq(idCategoria), any(), any());
     }
+
 }

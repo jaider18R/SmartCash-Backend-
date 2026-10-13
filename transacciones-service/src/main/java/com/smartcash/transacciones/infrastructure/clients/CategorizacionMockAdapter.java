@@ -27,4 +27,16 @@ public class CategorizacionMockAdapter implements ClasificadorTransaccionPort {
                 .map(regla -> new ResultadoClasificacion(regla.getValue(), 0.75))
                 .orElseGet(() -> new ResultadoClasificacion(null, 0.0));
     }
+
+    @Override
+    public ResultadoClasificacionDetallada clasificarConDetalle(UUID idUsuario, String comercio, BigDecimal monto) {
+        ResultadoClasificacion res = clasificar(comercio, monto);
+        return new ResultadoClasificacionDetallada(res.idCategoria(), res.confianza(), 1L, false, null);
+    }
+
+    @Override
+    public String obtenerExplicacion(long transaccionId) {
+        return "Clasificacion generada por coincidencia de palabras clave.";
+    }
 }
+

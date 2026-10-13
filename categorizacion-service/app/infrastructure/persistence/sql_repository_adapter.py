@@ -16,7 +16,7 @@ class SqlRepositoryAdapter(RepositoryPort):
             descripcion=t.descripcion,
             categoria=t.categoria,
             nivel_confianza=t.nivel_confianza,
-            usuario_id=t.usuario_id
+            usuario_id=str(t.usuario_id) if t.usuario_id is not None else None
         )
         self.session.merge(db_obj)
         self.session.commit()
@@ -47,8 +47,9 @@ class SqlRepositoryAdapter(RepositoryPort):
         self.session.add(db_obj)
         self.session.commit()
 
-    def obtener_historial_usuario(self, usuario_id: int, categoria: str) -> List[float]:
+    def obtener_historial_usuario(self, usuario_id: str, categoria: str) -> List[float]:
         filas = (self.session.query(TransaccionClasificadaDB.monto)
-                 .filter_by(usuario_id=usuario_id, categoria=categoria)
+                 .filter_by(usuario_id=str(usuario_id), categoria=categoria)
                  .all())
         return [f[0] for f in filas]
+

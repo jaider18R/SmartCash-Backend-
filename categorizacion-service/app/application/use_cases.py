@@ -8,7 +8,7 @@ class ClasificarTransaccionUseCase:
         self.ml_model = ml_model
         self.repo = repo
 
-    def ejecutar(self, transaccion_id: int, comercio: str, monto: float, descripcion: str = "", usuario_id: int = None) -> TransaccionClasificada:
+    def ejecutar(self, transaccion_id: int, comercio: str, monto: float, descripcion: str = "", usuario_id: str = None) -> TransaccionClasificada:
         cat, confianza = self.ml_model.predecir(comercio, monto, descripcion)
         t = TransaccionClasificada(
             transaccion_id=transaccion_id,
@@ -17,7 +17,7 @@ class ClasificarTransaccionUseCase:
             descripcion=descripcion,
             categoria=cat,
             nivel_confianza=confianza,
-            usuario_id=usuario_id
+            usuario_id=str(usuario_id) if usuario_id is not None else None
         )
         self.repo.guardar_clasificacion(t)
         return t
@@ -48,7 +48,7 @@ class DetectarPatronInusualUseCase:
     def __init__(self, repo: RepositoryPort):
         self.repo = repo
 
-    def ejecutar(self, usuario_id: int, transaccion_id: int) -> AlertaPatronInusual:
+    def ejecutar(self, usuario_id: str, transaccion_id: int) -> AlertaPatronInusual:
         t = self.repo.obtener_clasificacion(transaccion_id)
         if not t:
             raise ValueError(f"Transaccion {transaccion_id} no encontrada")
@@ -56,7 +56,7 @@ class DetectarPatronInusualUseCase:
         historial = self.repo.obtener_historial_usuario(usuario_id, t.categoria)
         
         if len(historial) < 3:
-            return AlertaPatronInusual(transaccion_id, usuario_id, False, None)
+            return AlertaPatronInusual(transaccion_id, str(usuario_id), False, None)
 
         media = float(np.mean(historial))
         std = float(np.std(historial)) or 1.0
@@ -65,6 +65,7 @@ class DetectarPatronInusualUseCase:
         if z_score > 2.0:
             alerta = (f"El monto de ${t.monto:,.0f} es significativamente superior al promedio "
                       f"historico de ${media:,.0f} para la categoria '{t.categoria}'.")
-            return AlertaPatronInusual(transaccion_id, usuario_id, True, alerta)
+            return AlertaPatronInusual(transaccion_id, str(usuario_id), True, alerta)
 
-        return AlertaPatronInusual(transaccion_id, usuario_id, False, None)
+        return AlertaPatronInusual(transaccion_id, str(usuario_id), False, None)
+

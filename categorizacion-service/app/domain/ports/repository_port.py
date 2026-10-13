@@ -16,5 +16,6 @@ class RepositoryPort(ABC):
         pass
 
     @abstractmethod
-    def obtener_historial_usuario(self, usuario_id: int, categoria: str) -> List[float]:
+    def obtener_historial_usuario(self, usuario_id: str, categoria: str) -> List[float]:
         pass
+

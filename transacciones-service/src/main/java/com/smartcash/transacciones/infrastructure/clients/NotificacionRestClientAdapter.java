@@ -50,4 +50,32 @@ public class NotificacionRestClientAdapter implements AlertaNotificacionPort {
             log.warn("No fue posible enviar alerta a notificaciones-service ({}): {}", url, e.getMessage());
         }
     }
+
+    @Override
+    public void enviarAlertaGastoInusual(String correoUsuario, String comercio, BigDecimal monto, String detalle) {
+        if (correoUsuario == null || correoUsuario.isBlank()) {
+            return;
+        }
+
+        try {
+            Map<String, Object> body = Map.of(
+                    "destinatario", correoUsuario,
+                    "nombre", "Usuario SmartCash",
+                    "tipo", "GENERAL",
+                    "asunto", "SmartCash - Alerta de Gasto Inusual Detectado",
+                    "parametros", Map.of(
+                            "mensaje", detalle != null ? detalle : "Se ha detectado un movimiento con desviacion inusual en " + comercio + " por $" + monto
+                    )
+            );
+
+            restClient.post()
+                    .uri("/api/notificaciones/email")
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.warn("No fue posible enviar alerta de gasto inusual ({}): {}", url, e.getMessage());
+        }
+    }
 }
+

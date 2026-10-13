@@ -6,7 +6,7 @@ class ClasificarRequest(BaseModel):
     comercio: str
     monto: float = Field(..., gt=0)
     descripcion: Optional[str] = ""
-    usuario_id: Optional[int] = None
+    usuario_id: Optional[str] = None
 
 class ClasificarResponse(BaseModel):
     categoria: str
@@ -27,9 +27,10 @@ class ExplicacionResponse(BaseModel):
     explicacion: str
 
 class AnalizarPatronRequest(BaseModel):
-    usuario_id: int
+    usuario_id: str
     transaccion_id: int
 
 class AnalizarPatronResponse(BaseModel):
     es_inusual: bool
     descripcion_alerta: Optional[str] = None
+

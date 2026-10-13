@@ -10,7 +10,7 @@ class TransaccionClasificada:
     descripcion: Optional[str]
     categoria: str
     nivel_confianza: float
-    usuario_id: Optional[int] = None
+    usuario_id: Optional[str] = None
     fecha: Optional[datetime] = None
 
 @dataclass
@@ -31,6 +31,7 @@ class ExplicacionClasificacion:
 @dataclass
 class AlertaPatronInusual:
     transaccion_id: int
-    usuario_id: int
+    usuario_id: str
     es_inusual: bool
     descripcion_alerta: Optional[str] = None
+

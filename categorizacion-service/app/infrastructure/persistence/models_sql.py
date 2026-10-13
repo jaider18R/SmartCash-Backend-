@@ -13,7 +13,7 @@ class TransaccionClasificadaDB(Base):
     descripcion = Column(String(255), nullable=True)
     categoria = Column(String(100), nullable=False)
     nivel_confianza = Column(Float, nullable=False)
-    usuario_id = Column(Integer, nullable=True)
+    usuario_id = Column(String(64), nullable=True)
     fecha = Column(DateTime, default=datetime.utcnow)
 
 class CorreccionDB(Base):
