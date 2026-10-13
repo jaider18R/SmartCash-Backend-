@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface RegistrarTransaccionUseCase {
     Transaccion registrar(UUID idUsuario, BigDecimal monto, LocalDate fecha,
                            String comercio, String tipoMovimiento);
+    java.util.List<Transaccion> listarPorUsuario(UUID idUsuario);
 }
+

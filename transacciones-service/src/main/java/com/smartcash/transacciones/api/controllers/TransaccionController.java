@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/transacciones")
 public class TransaccionController {
@@ -31,4 +33,15 @@ public class TransaccionController {
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(TransaccionMapper.toResponseDTO(transaccion));
     }
+
+    @GetMapping
+    public ResponseEntity<java.util.List<TransaccionResponseDTO>> listar(org.springframework.security.core.Authentication authentication) {
+        UUID idUsuario = UUID.fromString((String) authentication.getPrincipal());
+        java.util.List<TransaccionResponseDTO> transacciones = registrarTransaccionUseCase.listarPorUsuario(idUsuario)
+                .stream()
+                .map(TransaccionMapper::toResponseDTO)
+                .toList();
+        return ResponseEntity.ok(transacciones);
+    }
 }
+

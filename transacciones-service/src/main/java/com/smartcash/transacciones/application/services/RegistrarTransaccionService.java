@@ -65,7 +65,13 @@ public class RegistrarTransaccionService implements RegistrarTransaccionUseCase 
         return guardada;
     }
 
+    @Override
+    public java.util.List<Transaccion> listarPorUsuario(UUID idUsuario) {
+        return repositorioTransaccion.listarPorUsuario(idUsuario);
+    }
+
     private String obtenerCorreoUsuario() {
+
         org.springframework.security.core.Authentication auth =
                 org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getDetails() instanceof String email && !email.isBlank()) {
