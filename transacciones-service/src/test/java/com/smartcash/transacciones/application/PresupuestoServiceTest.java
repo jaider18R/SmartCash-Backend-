@@ -73,6 +73,7 @@ class PresupuestoServiceTest {
 
         verify(alertaNotificacionMock, times(1)).enviarAlertaPresupuesto(
                 eq("usuario@test.com"),
+                any(),
                 eq("Restaurantes"),
                 eq(new BigDecimal("85.00"))
         );
@@ -91,6 +92,6 @@ class PresupuestoServiceTest {
 
         service.verificarPresupuesto(idUsuario, idCategoria, LocalDate.of(2026, 10, 9), new BigDecimal("10000"));
 
-        verify(alertaNotificacionMock, never()).enviarAlertaPresupuesto(any(), any(), any());
+        verify(alertaNotificacionMock, never()).enviarAlertaPresupuesto(any(), any(), any(), any());
     }
 }

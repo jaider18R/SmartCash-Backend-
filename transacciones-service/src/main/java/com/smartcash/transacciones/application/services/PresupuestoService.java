@@ -108,8 +108,10 @@ public class PresupuestoService implements GestionarPresupuestoUseCase, Verifica
 
         if (porcentaje.compareTo(new BigDecimal("80")) >= 0) {
             String correoUsuario = obtenerCorreoUsuario();
+            String nombreUsuario = obtenerNombreUsuario();
             alertaNotificacionPort.enviarAlertaPresupuesto(
                     correoUsuario,
+                    nombreUsuario,
                     presupuesto.getNombreCategoria(),
                     porcentaje
             );
@@ -118,8 +120,26 @@ public class PresupuestoService implements GestionarPresupuestoUseCase, Verifica
 
     private String obtenerCorreoUsuario() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getDetails() instanceof String email && !email.isBlank()) {
-            return email;
+        if (auth != null) {
+            if (auth.getDetails() instanceof java.util.Map<?, ?> map) {
+                Object email = map.get("email");
+                if (email instanceof String s && !s.isBlank()) {
+                    return s;
+                }
+            } else if (auth.getDetails() instanceof String email && !email.isBlank()) {
+                return email;
+            }
+        }
+        return null;
+    }
+
+    private String obtenerNombreUsuario() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof java.util.Map<?, ?> map) {
+            Object nombre = map.get("nombre");
+            if (nombre instanceof String s && !s.isBlank()) {
+                return s;
+            }
         }
         return null;
     }

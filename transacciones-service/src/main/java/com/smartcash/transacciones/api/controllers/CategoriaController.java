@@ -22,7 +22,10 @@ public class CategoriaController {
             new CategoriaResponseDTO(UUID.fromString("00000000-0000-0000-0000-000000000003"), "Servicios y Suscripciones", "#6366F1", "film"),
             new CategoriaResponseDTO(UUID.fromString("00000000-0000-0000-0000-000000000004"), "Transporte y Viajes", "#3B82F6", "car"),
             new CategoriaResponseDTO(UUID.fromString("00000000-0000-0000-0000-000000000005"), "Transferencias y Finanzas", "#8B5CF6", "credit-card"),
-            new CategoriaResponseDTO(UUID.fromString("00000000-0000-0000-0000-000000000006"), "Salud y Farmacia", "#EF4444", "heart-pulse")
+            new CategoriaResponseDTO(UUID.fromString("00000000-0000-0000-0000-000000000006"), "Salud y Farmacia", "#EF4444", "heart-pulse"),
+            new CategoriaResponseDTO(UUID.fromString("00000000-0000-0000-0000-000000000007"), "Salario y Nómina", "#059669", "briefcase"),
+            new CategoriaResponseDTO(UUID.fromString("00000000-0000-0000-0000-000000000008"), "Inversiones y Rendimientos", "#0284C7", "trending-up"),
+            new CategoriaResponseDTO(UUID.fromString("00000000-0000-0000-0000-000000000009"), "Otros Ingresos", "#7C3AED", "wallet")
     );
 
     @GetMapping

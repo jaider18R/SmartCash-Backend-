@@ -24,7 +24,10 @@ public class CategorizacionHttpAdapter implements ClasificadorTransaccionPort {
             "Servicios y Suscripciones", UUID.fromString("00000000-0000-0000-0000-000000000003"),
             "Transporte y Viajes", UUID.fromString("00000000-0000-0000-0000-000000000004"),
             "Transferencias y Finanzas", UUID.fromString("00000000-0000-0000-0000-000000000005"),
-            "Salud y Farmacia", UUID.fromString("00000000-0000-0000-0000-000000000006")
+            "Salud y Farmacia", UUID.fromString("00000000-0000-0000-0000-000000000006"),
+            "Salario y Nómina", UUID.fromString("00000000-0000-0000-0000-000000000007"),
+            "Inversiones y Rendimientos", UUID.fromString("00000000-0000-0000-0000-000000000008"),
+            "Otros Ingresos", UUID.fromString("00000000-0000-0000-0000-000000000009")
     );
 
     private final RestClient restClient;

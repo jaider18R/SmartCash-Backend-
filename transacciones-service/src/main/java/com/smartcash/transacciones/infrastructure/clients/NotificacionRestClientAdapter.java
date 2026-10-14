@@ -24,15 +24,16 @@ public class NotificacionRestClientAdapter implements AlertaNotificacionPort {
     }
 
     @Override
-    public void enviarAlertaPresupuesto(String correoUsuario, String nombreCategoria, BigDecimal porcentajeConsumido) {
+    public void enviarAlertaPresupuesto(String correoUsuario, String nombreUsuario, String nombreCategoria, BigDecimal porcentajeConsumido) {
         if (correoUsuario == null || correoUsuario.isBlank()) {
             return;
         }
 
         try {
+            String nombreFinal = (nombreUsuario != null && !nombreUsuario.isBlank()) ? nombreUsuario : "Usuario SmartCash";
             Map<String, Object> body = Map.of(
                     "destinatario", correoUsuario,
-                    "nombre", "Usuario SmartCash",
+                    "nombre", nombreFinal,
                     "tipo", "ALERTA_PRESUPUESTO",
                     "asunto", "SmartCash - Alerta de Presupuesto Excedido",
                     "parametros", Map.of(
@@ -52,15 +53,16 @@ public class NotificacionRestClientAdapter implements AlertaNotificacionPort {
     }
 
     @Override
-    public void enviarAlertaGastoInusual(String correoUsuario, String comercio, BigDecimal monto, String detalle) {
+    public void enviarAlertaGastoInusual(String correoUsuario, String nombreUsuario, String comercio, BigDecimal monto, String detalle) {
         if (correoUsuario == null || correoUsuario.isBlank()) {
             return;
         }
 
         try {
+            String nombreFinal = (nombreUsuario != null && !nombreUsuario.isBlank()) ? nombreUsuario : "Usuario SmartCash";
             Map<String, Object> body = Map.of(
                     "destinatario", correoUsuario,
-                    "nombre", "Usuario SmartCash",
+                    "nombre", nombreFinal,
                     "tipo", "GENERAL",
                     "asunto", "SmartCash - Alerta de Gasto Inusual Detectado",
                     "parametros", Map.of(

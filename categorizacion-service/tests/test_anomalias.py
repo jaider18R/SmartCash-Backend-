@@ -38,7 +38,7 @@ def test_detectar_patron_inusual_cuando_gasto_supera_desviacion():
 
     assert alerta.es_inusual is True
     assert alerta.descripcion_alerta is not None
-    assert "significativamente superior" in alerta.descripcion_alerta
+    assert "inusualmente alto" in alerta.descripcion_alerta
 
 def test_no_marca_inusual_cuando_gasto_esta_dentro_del_rango_normal():
     transaccion = TransaccionClasificada(

@@ -44,10 +44,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                 String idUsuario = claims.get("id_usuario", String.class);
                 String email = claims.getSubject();
+                String nombre = claims.get("nombre", String.class);
 
                 var authentication = new UsernamePasswordAuthenticationToken(
                         idUsuario, null, Collections.emptyList());
-                authentication.setDetails(email);
+                java.util.Map<String, String> details = new java.util.HashMap<>();
+                details.put("email", email);
+                if (nombre != null) {
+                    details.put("nombre", nombre);
+                }
+                authentication.setDetails(details);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
             } catch (Exception ex) {

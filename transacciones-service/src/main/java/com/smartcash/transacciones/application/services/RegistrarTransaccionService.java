@@ -47,8 +47,9 @@ public class RegistrarTransaccionService implements RegistrarTransaccionUseCase 
         if ("gasto".equalsIgnoreCase(tipoMovimiento)) {
             if (resultado.esInusual()) {
                 String correo = obtenerCorreoUsuario();
+                String nombre = obtenerNombreUsuario();
                 alertaNotificacionPort.enviarAlertaGastoInusual(
-                        correo, comercio, monto, resultado.alertaInusual()
+                        correo, nombre, comercio, monto, resultado.alertaInusual()
                 );
             }
 
@@ -123,11 +124,29 @@ public class RegistrarTransaccionService implements RegistrarTransaccionUseCase 
 
 
     private String obtenerCorreoUsuario() {
-
         org.springframework.security.core.Authentication auth =
                 org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getDetails() instanceof String email && !email.isBlank()) {
-            return email;
+        if (auth != null) {
+            if (auth.getDetails() instanceof java.util.Map<?, ?> map) {
+                Object email = map.get("email");
+                if (email instanceof String s && !s.isBlank()) {
+                    return s;
+                }
+            } else if (auth.getDetails() instanceof String email && !email.isBlank()) {
+                return email;
+            }
+        }
+        return null;
+    }
+
+    private String obtenerNombreUsuario() {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof java.util.Map<?, ?> map) {
+            Object nombre = map.get("nombre");
+            if (nombre instanceof String s && !s.isBlank()) {
+                return s;
+            }
         }
         return null;
     }

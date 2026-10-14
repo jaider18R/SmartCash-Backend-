@@ -55,15 +55,25 @@ class DetectarPatronInusualUseCase:
         
         historial = self.repo.obtener_historial_usuario(usuario_id, t.categoria)
         
-        if len(historial) < 3:
+        if len(historial) < 2:
             return AlertaPatronInusual(transaccion_id, str(usuario_id), False, None)
 
         media = float(np.mean(historial))
-        std = float(np.std(historial)) or 1.0
+        std = float(np.std(historial))
 
-        z_score = (t.monto - media) / std
-        if z_score > 2.0:
-            alerta = (f"El monto de ${t.monto:,.0f} es significativamente superior al promedio "
+        es_anomalo = False
+        if std > 0:
+            z_score = (t.monto - media) / std
+            if z_score > 2.0:
+                es_anomalo = True
+        elif t.monto >= (media * 2.0) and t.monto > 50000:
+            es_anomalo = True
+
+        if not es_anomalo and len(historial) >= 2 and t.monto >= (media * 2.5) and t.monto > 50000:
+            es_anomalo = True
+
+        if es_anomalo:
+            alerta = (f"El monto de ${t.monto:,.0f} es inusualmente alto en comparacion con tu promedio "
                       f"historico de ${media:,.0f} para la categoria '{t.categoria}'.")
             return AlertaPatronInusual(transaccion_id, str(usuario_id), True, alerta)
 
