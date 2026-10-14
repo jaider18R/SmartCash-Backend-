@@ -23,9 +23,15 @@ public class TransaccionController {
     }
 
     @PostMapping
-    public ResponseEntity<TransaccionResponseDTO> registrar(@Valid @RequestBody TransaccionRequestDTO request) {
+    public ResponseEntity<TransaccionResponseDTO> registrar(
+            @Valid @RequestBody TransaccionRequestDTO request,
+            org.springframework.security.core.Authentication authentication) {
+        UUID idUsuario = (authentication != null && authentication.getPrincipal() instanceof String p && !p.isBlank())
+                ? UUID.fromString(p)
+                : request.idUsuario();
+
         Transaccion transaccion = registrarTransaccionUseCase.registrar(
-                request.idUsuario(),
+                idUsuario,
                 request.monto(),
                 request.fecha(),
                 request.comercio(),
@@ -33,6 +39,7 @@ public class TransaccionController {
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(TransaccionMapper.toResponseDTO(transaccion));
     }
+
 
     @GetMapping
     public ResponseEntity<java.util.List<TransaccionResponseDTO>> listar(
