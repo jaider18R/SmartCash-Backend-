@@ -96,10 +96,10 @@ public class EnviarNotificacionService implements EnviarNotificacionUseCase {
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     </head>
                     <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 30px 15px;">
+                        <table width="100%%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 30px 15px;">
                             <tr>
                                 <td align="center">
-                                    <table width="100%" max-width="580" cellpadding="0" cellspacing="0" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;">
+                                    <table width="100%%" max-width="580" cellpadding="0" cellspacing="0" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;">
                                         <tr>
                                             <td style="background: linear-gradient(135deg, #d97706, #ea580c); padding: 32px 30px; text-align: center;">
                                                 <div style="display: inline-block; background-color: rgba(255, 255, 255, 0.2); padding: 8px 16px; border-radius: 20px; color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">
