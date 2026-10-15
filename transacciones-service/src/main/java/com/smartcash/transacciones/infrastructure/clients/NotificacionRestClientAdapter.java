@@ -26,6 +26,7 @@ public class NotificacionRestClientAdapter implements AlertaNotificacionPort {
     @Override
     public void enviarAlertaPresupuesto(String correoUsuario, String nombreUsuario, String nombreCategoria, BigDecimal porcentajeConsumido) {
         if (correoUsuario == null || correoUsuario.isBlank()) {
+            log.warn("No se pudo enviar alerta de presupuesto: correoUsuario es nulo o vacio en el contexto de seguridad.");
             return;
         }
 

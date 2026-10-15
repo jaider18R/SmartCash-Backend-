@@ -6,6 +6,8 @@ import com.smartcash.transacciones.domain.ports.in.VerificarPresupuestoUseCase;
 import com.smartcash.transacciones.domain.ports.out.AlertaNotificacionPort;
 import com.smartcash.transacciones.domain.ports.out.RepositorioPresupuestoPort;
 import com.smartcash.transacciones.domain.ports.out.RepositorioTransaccionPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,8 @@ import java.util.UUID;
 
 @Service
 public class PresupuestoService implements GestionarPresupuestoUseCase, VerificarPresupuestoUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(PresupuestoService.class);
 
     private final RepositorioPresupuestoPort repositorioPresupuesto;
     private final RepositorioTransaccionPort repositorioTransaccion;
@@ -110,15 +114,21 @@ public class PresupuestoService implements GestionarPresupuestoUseCase, Verifica
                 .multiply(BigDecimal.valueOf(100))
                 .setScale(2, RoundingMode.HALF_UP);
 
+        log.info("Verificacion Presupuesto: Categoria='{}', GastoAcumulado={}, Limite={}, Porcentaje={}%",
+                presupuesto.getNombreCategoria(), gastoAcumulado, presupuesto.getMontoLimite(), porcentaje);
+
         if (porcentaje.compareTo(new BigDecimal("80")) >= 0) {
             String correoUsuario = obtenerCorreoUsuario();
             String nombreUsuario = obtenerNombreUsuario();
+            log.info("Disparando envio de alerta de presupuesto a: correo='{}', nombre='{}'", correoUsuario, nombreUsuario);
             alertaNotificacionPort.enviarAlertaPresupuesto(
                     correoUsuario,
                     nombreUsuario,
                     presupuesto.getNombreCategoria(),
                     porcentaje
             );
+        } else {
+            log.info("Porcentaje {}% no supera el umbral del 80%. No se emite alerta.", porcentaje);
         }
     }
 
