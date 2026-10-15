@@ -61,7 +61,11 @@ public class PresupuestoService implements GestionarPresupuestoUseCase, Verifica
             );
         }
 
-        return repositorioPresupuesto.guardar(presupuestoAGuardar);
+        Presupuesto guardado = repositorioPresupuesto.guardar(presupuestoAGuardar);
+
+        verificarPresupuesto(idUsuario, idCategoria, LocalDate.of(anio, mes, 1), BigDecimal.ZERO);
+
+        return guardado;
     }
 
     @Override

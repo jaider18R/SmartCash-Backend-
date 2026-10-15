@@ -42,11 +42,15 @@ public class NotificacionRestClientAdapter implements AlertaNotificacionPort {
                     )
             );
 
+            log.info("Enviando alerta de presupuesto a notificaciones-service para usuario: {} ({}) - Categoria: {} - Porcentaje: {}%",
+                    correoUsuario, nombreFinal, nombreCategoria, porcentajeConsumido);
+
             restClient.post()
                     .uri("/api/notificaciones/email")
                     .body(body)
                     .retrieve()
                     .toBodilessEntity();
+            log.info("Alerta de presupuesto entregada exitosamente a notificaciones-service");
         } catch (Exception e) {
             log.warn("No fue posible enviar alerta a notificaciones-service ({}): {}", url, e.getMessage());
         }
