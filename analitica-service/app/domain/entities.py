@@ -39,3 +39,41 @@ class SimulacionResultado:
     diferencia_diaria: float
     impacto_metas: str
     es_viable: bool
+
+@dataclass
+class ProyeccionInversionItem:
+    tipo: str
+    nombre_producto: str
+    plataforma: str
+    tasa_ea_estimada: float
+    rendimiento_bruto: float
+    retencion_fuente_estimada: float
+    rendimiento_neto: float
+    capital_final: float
+    riesgo: str
+    descripcion_facil: str
+
+@dataclass
+class ResultadoSimulacionInversion:
+    monto_invertido: float
+    plazo_meses: int
+    inflacion_colombia_estimada_porcentaje: float
+    perdida_poder_adquisitivo_efectivo: float
+    proyecciones: List[ProyeccionInversionItem]
+    recomendacion_perfil: str
+
+@dataclass
+class OpcionInversionInfo:
+    id_opcion: str
+    categoria: str
+    titulo: str
+    subtitulo: str
+    que_es_facil: str
+    rentabilidad_estimada: str
+    tasa_ea_promedio: float
+    riesgo: str
+    plataformas_recomendadas: List[str]
+    vigilancia: str
+    monto_minimo: str
+    disponibilidad_liquidez: str
+    url_promocional: str

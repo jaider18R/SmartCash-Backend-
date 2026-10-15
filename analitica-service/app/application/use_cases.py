@@ -38,3 +38,18 @@ class SimularGastoUseCase:
                  ahorro_metas: float = 0.0) -> SimulacionResultado:
         safe_actual = self.use_case_safe.ejecutar(token, compromisos_fijos, ahorro_metas)
         return self.motor.simular_impacto_gasto(safe_actual, monto_simulado)
+
+class SimularInversionesUseCase:
+    def __init__(self, motor: MotorAnalitica):
+        self.motor = motor
+
+    def ejecutar(self, monto: float, plazo_meses: int):
+        return self.motor.simular_inversiones(monto, plazo_meses)
+
+class ObtenerCatalogoInversionesUseCase:
+    def __init__(self, motor: MotorAnalitica):
+        self.motor = motor
+
+    def ejecutar(self):
+        return self.motor.obtener_catalogo_inversiones()
+

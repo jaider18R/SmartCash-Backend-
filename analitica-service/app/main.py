@@ -8,14 +8,21 @@ from app.api.schemas import (
     SafeToSpendRequest,
     SafeToSpendResponse,
     SimularGastoRequest,
-    SimularGastoResponse
+    SimularGastoResponse,
+    SimularInversionRequest,
+    SimularInversionResponse,
+    ProyeccionInversionItemDTO,
+    CatalogoInversionesResponse,
+    OpcionInversionDTO
 )
 from app.domain.motor_analitica import MotorAnalitica
 from app.infrastructure.clients.transacciones_http_adapter import TransaccionesHttpAdapter
 from app.application.use_cases import (
     ObtenerResumenMensualUseCase,
     CalcularSafeToSpendUseCase,
-    SimularGastoUseCase
+    SimularGastoUseCase,
+    SimularInversionesUseCase,
+    ObtenerCatalogoInversionesUseCase
 )
 
 app = FastAPI(
@@ -38,6 +45,9 @@ motor = MotorAnalitica()
 resumen_use_case = ObtenerResumenMensualUseCase(transacciones_client, motor)
 safe_use_case = CalcularSafeToSpendUseCase(transacciones_client, motor)
 simular_use_case = SimularGastoUseCase(safe_use_case, motor)
+simular_inversiones_use_case = SimularInversionesUseCase(motor)
+catalogo_inversiones_use_case = ObtenerCatalogoInversionesUseCase(motor)
+
 
 @app.get("/api/analitica/resumen-mensual", response_model=ResumenMensualResponse, tags=["Analitica"])
 def resumen_mensual(
@@ -91,6 +101,57 @@ def simular_gasto(
         es_viable=res.es_viable
     )
 
+@app.post("/api/analitica/inversiones/simular", response_model=SimularInversionResponse, tags=["Inversiones"])
+def simular_inversiones(req: SimularInversionRequest):
+    res = simular_inversiones_use_case.ejecutar(req.monto, req.plazo_meses)
+    return SimularInversionResponse(
+        monto_invertido=res.monto_invertido,
+        plazo_meses=res.plazo_meses,
+        inflacion_colombia_estimada_porcentaje=res.inflacion_colombia_estimada_porcentaje,
+        perdida_poder_adquisitivo_efectivo=res.perdida_poder_adquisitivo_efectivo,
+        proyecciones=[
+            ProyeccionInversionItemDTO(
+                tipo=p.tipo,
+                nombre_producto=p.nombre_producto,
+                plataforma=p.plataforma,
+                tasa_ea_estimada=p.tasa_ea_estimada,
+                rendimiento_bruto=p.rendimiento_bruto,
+                retencion_fuente_estimada=p.retencion_fuente_estimada,
+                rendimiento_neto=p.rendimiento_neto,
+                capital_final=p.capital_final,
+                riesgo=p.riesgo,
+                descripcion_facil=p.descripcion_facil
+            )
+            for p in res.proyecciones
+        ],
+        recomendacion_perfil=res.recomendacion_perfil
+    )
+
+@app.get("/api/analitica/inversiones/catalogo", response_model=CatalogoInversionesResponse, tags=["Inversiones"])
+def obtener_catalogo_inversiones():
+    opciones = catalogo_inversiones_use_case.ejecutar()
+    return CatalogoInversionesResponse(
+        opciones=[
+            OpcionInversionDTO(
+                id_opcion=o.id_opcion,
+                categoria=o.categoria,
+                titulo=o.titulo,
+                subtitulo=o.subtitulo,
+                que_es_facil=o.que_es_facil,
+                rentabilidad_estimada=o.rentabilidad_estimada,
+                tasa_ea_promedio=o.tasa_ea_promedio,
+                riesgo=o.riesgo,
+                plataformas_recomendadas=o.plataformas_recomendadas,
+                vigilancia=o.vigilancia,
+                monto_minimo=o.monto_minimo,
+                disponibilidad_liquidez=o.disponibilidad_liquidez,
+                url_promocional=o.url_promocional
+            )
+            for o in opciones
+        ]
+    )
+
 @app.get("/health", tags=["Monitoreo"])
 def health():
     return {"status": "UP", "service": "analitica-service", "port": 8084}
+
