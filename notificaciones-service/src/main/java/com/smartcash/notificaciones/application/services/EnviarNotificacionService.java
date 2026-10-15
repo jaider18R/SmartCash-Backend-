@@ -48,10 +48,10 @@ public class EnviarNotificacionService implements EnviarNotificacionUseCase {
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     </head>
                     <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 30px 15px;">
+                        <table width="100%%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 30px 15px;">
                             <tr>
                                 <td align="center">
-                                    <table width="100%" max-width="560" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);">
+                                    <table width="100%%" max-width="560" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);">
                                         <tr>
                                             <td style="background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 32px 30px; text-align: center;">
                                                 <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">SmartCash</h1>
@@ -158,10 +158,10 @@ public class EnviarNotificacionService implements EnviarNotificacionUseCase {
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     </head>
                     <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 30px 15px;">
+                        <table width="100%%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 30px 15px;">
                             <tr>
                                 <td align="center">
-                                    <table width="100%" max-width="560" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;">
+                                    <table width="100%%" max-width="560" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;">
                                         <tr>
                                             <td style="background: linear-gradient(135deg, #4f46e5, #4338ca); padding: 28px 30px; text-align: center;">
                                                 <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700;">SmartCash</h1>
