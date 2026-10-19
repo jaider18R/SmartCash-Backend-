@@ -1,0 +1,137 @@
+services:
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: smartcash-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartcash_db_pass_2026}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smartcash-net
+
+  categorizacion-service:
+    build:
+      context: ./categorizacion-service
+      dockerfile: Dockerfile
+    image: smartcash/categorizacion-service:1.0.0
+    container_name: smartcash-categorizacion
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - categorizacion_data:/app/data
+    networks:
+      - smartcash-net
+
+  notificaciones-service:
+    build:
+      context: ./notificaciones-service
+      dockerfile: Dockerfile
+    image: smartcash/notificaciones-service:1.0.0
+    container_name: smartcash-notificaciones
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      EMAIL_API_KEY: ${EMAIL_API_KEY:-mock-key}
+    networks:
+      - smartcash-net
+
+  usuarios-auth:
+    build:
+      context: ./usuarios-auth
+      dockerfile: Dockerfile
+    image: smartcash/usuarios-auth:1.0.0
+    container_name: smartcash-usuarios-auth
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/usuarios_db
+      SPRING_DATASOURCE_USERNAME: usuarios_user
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-smartcash_db_pass_2026}
+      SMARTCASH_JWT_SECRET: ${JWT_SECRET:-tu_clave_secreta_super_segura_de_al_menos_256_bits_smartcash_2026}
+      SMARTCASH_SERVICIOS_NOTIFICACIONES_URL: http://notificaciones-service:8083
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      notificaciones-service:
+        condition: service_started
+    networks:
+      - smartcash-net
+
+  transacciones-service:
+    build:
+      context: ./transacciones-service
+      dockerfile: Dockerfile
+    image: smartcash/transacciones-service:1.0.0
+    container_name: smartcash-transacciones
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/transacciones_db
+      SPRING_DATASOURCE_USERNAME: transacciones_user
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-smartcash_db_pass_2026}
+      SMARTCASH_JWT_SECRET: ${JWT_SECRET:-tu_clave_secreta_super_segura_de_al_menos_256_bits_smartcash_2026}
+      SMARTCASH_SERVICIOS_CATEGORIZACION_URL: http://categorizacion-service:8000
+      SMARTCASH_SERVICIOS_NOTIFICACIONES_URL: http://notificaciones-service:8083
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      categorizacion-service:
+        condition: service_started
+    networks:
+      - smartcash-net
+
+  analitica-service:
+    build:
+      context: ./analitica-service
+      dockerfile: Dockerfile
+    image: smartcash/analitica-service:1.0.0
+    container_name: smartcash-analitica
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    environment:
+      TRANSACCIONES_SERVICE_URL: http://transacciones-service:8082
+    depends_on:
+      - transacciones-service
+    networks:
+      - smartcash-net
+
+  frontend:
+    build:
+      context: ${FRONTEND_CONTEXT:-../SmartCash-Frontend-/SmartCash-Frontend/frontend_new}
+      dockerfile: Dockerfile
+    image: smartcash/frontend:1.0.0
+    container_name: smartcash-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - usuarios-auth
+      - transacciones-service
+      - analitica-service
+    networks:
+      - smartcash-net
+
+networks:
+  smartcash-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  categorizacion_data:
+    driver: local
