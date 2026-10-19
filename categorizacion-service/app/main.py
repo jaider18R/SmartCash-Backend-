@@ -1,3 +1,4 @@
+import base64
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine
@@ -7,16 +8,19 @@ from app.api.schemas import (
     ClasificarRequest, ClasificarResponse,
     CorreccionRequest, MensajeResponse,
     ExplicacionResponse,
-    AnalizarPatronRequest, AnalizarPatronResponse
+    AnalizarPatronRequest, AnalizarPatronResponse,
+    EscanearFacturaRequest, EscanearFacturaResponse
 )
 from app.infrastructure.persistence.models_sql import Base
 from app.infrastructure.persistence.sql_repository_adapter import SqlRepositoryAdapter
 from app.infrastructure.ml.incremental_classifier import IncrementalClassifierAdapter
+from app.infrastructure.ocr.receipt_ocr_adapter import ReceiptOcrAdapter
 from app.application.use_cases import (
     ClasificarTransaccionUseCase,
     CorregirCategoriaUseCase,
     ExplicarClasificacionUseCase,
-    DetectarPatronInusualUseCase
+    DetectarPatronInusualUseCase,
+    ExtraerDatosFacturaUseCase
 )
 
 app = FastAPI(
@@ -39,6 +43,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base.metadata.create_all(bind=engine)
 
 ml_adapter = IncrementalClassifierAdapter()
+ocr_adapter = ReceiptOcrAdapter()
 
 def get_db():
     db = SessionLocal()
@@ -81,6 +86,33 @@ def analizar_patron(req: AnalizarPatronRequest, db: Session = Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+@app.post("/ocr/factura", response_model=EscanearFacturaResponse, tags=["Escaneo Inteligente de Facturas (Zero-Storage)"])
+def escanear_factura(req: EscanearFacturaRequest):
+    try:
+        contenido_b64 = req.imagen_base64
+        if "," in contenido_b64:
+            contenido_b64 = contenido_b64.split(",", 1)[1]
+        imagen_bytes = base64.b64decode(contenido_b64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Formato de imagen invalido")
+
+    try:
+        use_case = ExtraerDatosFacturaUseCase(ocr_adapter, ml_adapter)
+        res = use_case.ejecutar(imagen_bytes, req.nombre_archivo)
+        return EscanearFacturaResponse(
+            comercio=res.comercio,
+            monto=res.monto,
+            fecha=res.fecha,
+            tipo_movimiento=res.tipo_movimiento,
+            categoria_sugerida=res.categoria_sugerida,
+            nivel_confianza=res.nivel_confianza,
+            nit=res.nit,
+            texto_detectado_resumen=res.texto_detectado_resumen
+        )
+    finally:
+        del imagen_bytes
+
 @app.get("/health", tags=["Monitoreo"])
 def health():
     return {"status": "UP", "service": "categorizacion-service"}
+

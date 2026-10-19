@@ -34,3 +34,18 @@ class AnalizarPatronResponse(BaseModel):
     es_inusual: bool
     descripcion_alerta: Optional[str] = None
 
+class EscanearFacturaRequest(BaseModel):
+    imagen_base64: str
+    nombre_archivo: Optional[str] = None
+
+class EscanearFacturaResponse(BaseModel):
+    comercio: str
+    monto: float
+    fecha: str
+    tipo_movimiento: str
+    categoria_sugerida: str
+    nivel_confianza: float
+    nit: Optional[str] = None
+    texto_detectado_resumen: Optional[str] = None
+
+

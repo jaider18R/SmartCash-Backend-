@@ -35,3 +35,15 @@ class AlertaPatronInusual:
     es_inusual: bool
     descripcion_alerta: Optional[str] = None
 
+@dataclass
+class DatosFacturaExtraidos:
+    comercio: str
+    monto: float
+    fecha: str
+    tipo_movimiento: str
+    categoria_sugerida: str
+    nivel_confianza: float
+    nit: Optional[str] = None
+    texto_detectado_resumen: Optional[str] = None
+
+

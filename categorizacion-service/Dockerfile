@@ -24,10 +24,16 @@ FROM python:3.12-slim AS runtime
 
 LABEL maintainer="SmartCash Team"
 LABEL version="1.0.0"
-LABEL description="Microservicio de ML para categorizacion incremental de transacciones"
+LABEL description="Microservicio de ML y OCR para categorizacion incremental de transacciones"
 
-# Crear usuario no root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
+    tesseract-ocr-spa \
+    tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN useradd -m -u 1000 appuser
+
 
 WORKDIR /app
 

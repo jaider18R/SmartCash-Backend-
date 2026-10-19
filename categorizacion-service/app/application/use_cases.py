@@ -1,7 +1,14 @@
 import numpy as np
 from app.domain.ports.ml_model_port import MLModelPort
 from app.domain.ports.repository_port import RepositoryPort
-from app.domain.entities import TransaccionClasificada, CorreccionCategoria, ExplicacionClasificacion, AlertaPatronInusual
+from app.domain.ports.ocr_extractor_port import OcrExtractorPort
+from app.domain.entities import (
+    TransaccionClasificada,
+    CorreccionCategoria,
+    ExplicacionClasificacion,
+    AlertaPatronInusual,
+    DatosFacturaExtraidos
+)
 
 class ClasificarTransaccionUseCase:
     def __init__(self, ml_model: MLModelPort, repo: RepositoryPort):
@@ -78,4 +85,31 @@ class DetectarPatronInusualUseCase:
             return AlertaPatronInusual(transaccion_id, str(usuario_id), True, alerta)
 
         return AlertaPatronInusual(transaccion_id, str(usuario_id), False, None)
+
+class ExtraerDatosFacturaUseCase:
+    def __init__(self, ocr_extractor: OcrExtractorPort, ml_model: MLModelPort):
+        self.ocr_extractor = ocr_extractor
+        self.ml_model = ml_model
+
+    def ejecutar(self, imagen_bytes: bytes, texto_auxiliar: str = None) -> DatosFacturaExtraidos:
+        extraido = self.ocr_extractor.extraer_desde_bytes(imagen_bytes, texto_auxiliar)
+        comercio = extraido.get("comercio") or "Comercio Factura"
+        monto = float(extraido.get("monto") or 0.0)
+        fecha_str = extraido.get("fecha")
+        nit = extraido.get("nit")
+        resumen = extraido.get("texto_resumen")
+
+        categoria, confianza = self.ml_model.predecir(comercio, max(monto, 1.0), resumen or "")
+
+        return DatosFacturaExtraidos(
+            comercio=comercio,
+            monto=monto,
+            fecha=fecha_str,
+            tipo_movimiento="gasto",
+            categoria_sugerida=categoria,
+            nivel_confianza=confianza,
+            nit=nit,
+            texto_detectado_resumen=resumen
+        )
+
 
