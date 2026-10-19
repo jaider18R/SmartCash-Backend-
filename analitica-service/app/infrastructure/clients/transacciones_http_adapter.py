@@ -1,3 +1,4 @@
+import os
 import httpx
 from datetime import datetime
 from typing import List
@@ -5,8 +6,9 @@ from app.domain.entities import TransaccionItem
 from app.domain.ports.transacciones_client_port import TransaccionesClientPort
 
 class TransaccionesHttpAdapter(TransaccionesClientPort):
-    def __init__(self, base_url: str = "http://localhost:8082"):
-        self.base_url = base_url
+    def __init__(self, base_url: str = None):
+        self.base_url = base_url or os.getenv("TRANSACCIONES_SERVICE_URL", "http://localhost:8082")
+
 
     def obtener_transacciones_usuario(self, token: str) -> List[TransaccionItem]:
         try:
