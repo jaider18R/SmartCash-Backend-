@@ -30,16 +30,16 @@ public class BrevoEmailAdapter implements ProveedorEmailPort {
             @Value("${smartcash.notificaciones.brevo.api-key}") String apiKey,
             @Value("${smartcash.notificaciones.remitente.nombre:SmartCash}") String remitenteNombre,
             @Value("${smartcash.notificaciones.remitente.email:soporte@smartcash.com}") String remitenteEmail) {
-        this.apiUrl = apiUrl;
-        this.apiKey = apiKey;
-        this.remitenteNombre = remitenteNombre;
-        this.remitenteEmail = remitenteEmail;
+        this.apiUrl = apiUrl != null ? apiUrl.trim() : "";
+        this.apiKey = apiKey != null ? apiKey.trim() : "";
+        this.remitenteNombre = remitenteNombre != null ? remitenteNombre.trim() : "SmartCash";
+        this.remitenteEmail = remitenteEmail != null ? remitenteEmail.trim() : "soporte@smartcash.com";
         this.restClient = RestClient.builder().build();
     }
 
     @Override
     public ResultadoEnvio enviar(String destinatario, String nombreDestinatario, String asunto, String contenidoHtml) {
-        if (apiKey == null || apiKey.isBlank() || apiKey.equals("mock-key")) {
+        if (apiKey.isBlank() || apiKey.startsWith("mock-")) {
             log.info("Modo demostracion activado. Simulando envio de correo a: {} - Asunto: {}", destinatario, asunto);
             return new ResultadoEnvio(
                     true,
