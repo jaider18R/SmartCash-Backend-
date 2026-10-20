@@ -40,6 +40,9 @@ class IncrementalClassifierAdapter(MLModelPort):
             ("carulla mercado comida", "Mercado y Supermercado"),
             ("surtimax viveres abarrotes", "Mercado y Supermercado"),
             ("alkosto mercado viveres tecnologia", "Mercado y Supermercado"),
+            ("dollarcity articulos hogar variedad supermercado", "Mercado y Supermercado"),
+            ("tiendas isimo mercado viveres", "Mercado y Supermercado"),
+            ("homecenter sodimac hogar ferreteria", "Mercado y Supermercado"),
             ("rappi restaurante comida domicilio", "Restaurantes y Comida"),
             ("mcdonalds hamburguesas restaurante", "Restaurantes y Comida"),
             ("crepes and waffles restaurante", "Restaurantes y Comida"),
@@ -116,19 +119,19 @@ class IncrementalClassifierAdapter(MLModelPort):
         if any(w in texto for w in ["reembolso", "ingreso extra", "venta", "consignacion recibida"]):
             return "Otros Ingresos", 0.88
 
-        if any(w in texto for w in ["d1", "ara", "éxito", "exito", "carulla", "olímpica", "olimpica", "jumbo", "surtimax", "alkosto"]):
+        if any(w in texto for w in ["d1", "ara", "éxito", "exito", "carulla", "olímpica", "olimpica", "jumbo", "surtimax", "alkosto", "dollarcity", "isimo", "ísimo", "homecenter", "ktronix", "makro", " Colsubsidio".lower().strip()]):
             return "Mercado y Supermercado", 0.92
 
-        if any(w in texto for w in ["rappi", "crepes", "mcdonalds", "frisby", "corral", "restaurante", "pizza", "starbucks", "juan valdez"]):
+        if any(w in texto for w in ["rappi", "crepes", "mcdonalds", "frisby", "corral", "restaurante", "pizza", "starbucks", "juan valdez", "tostao"]):
             return "Restaurantes y Comida", 0.92
 
-        if any(w in texto for w in ["uber", "didi", "cabify", "indrive", "transmilenio", "gasolina", "terpel", "primax"]):
+        if any(w in texto for w in ["uber", "didi", "cabify", "indrive", "transmilenio", "gasolina", "terpel", "primax", "biomax", "texaco"]):
             return "Transporte y Viajes", 0.90
 
-        if any(w in texto for w in ["rebaja", "cruz verde", "farmatodo", "pasteur", "farmacia", "drogueria", "sanitas", "eps"]):
+        if any(w in texto for w in ["rebaja", "cruz verde", "farmatodo", "pasteur", "farmacia", "drogueria", "sanitas", "eps", "cafam"]):
             return "Salud y Farmacia", 0.90
 
-        if any(w in texto for w in ["netflix", "spotify", "claro", "tigo", "movistar", "etb", "enel", "codensa", "epm", "acueducto", "alcantarillado", "aseo", "emserfusa", "servicios publicos", "vanti", "gas natural", "celsia", "emcali"]):
+        if any(w in texto for w in ["netflix", "spotify", "claro", "tigo", "movistar", "etb", "wom", "enel", "codensa", "epm", "acueducto", "alcantarillado", "aseo", "emserfusa", "servicios publicos", "vanti", "gas natural", "celsia", "emcali", "afinia", "aire", "essa"]):
             return "Servicios y Suscripciones", 0.95
 
         if any(w in texto for w in ["nequi", "daviplata", "bancolombia", "cajero"]):

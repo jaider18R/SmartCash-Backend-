@@ -87,12 +87,12 @@ PALABRAS_IGNORAR_ENCABEZADO = [
 ]
 
 PALABRAS_PROHIBIDAS_TOTAL = [
-    "CAMBIO", "DEVUELTA", "SU CAMBIO", "EFECTIVO", "RECIBIDO", "ENTREGADO",
-    "VALOR ENTREGADO", "AUTORIZACION", "RESOLUCION", "DIAN", "FACTURA DE VENTA",
+    "CAMBIO", "SAMBIO", "DEVUELTA", "SU CAMBIO", "EFECTIVO", "ERECFIVO", "RECIBIDO", "ENTREGADO",
+    "VALOR ENTREGADO", "AUTORIZACION", "RESOLUCION", "DIAN", "FACTURA DE VENTA", "FACTURA DE VETA",
     "FACTURA ELECTRONICA", "FACTURA NO", "FACTURA N°", "FACTURA N*", "NUMERO FACTURA",
     "CAJERO", "CAJA", "PUNTOS", "MILLAS", "TELEFONO", "TEL:", "TEL.",
     "CEL:", "CEL.", "NIT", "CUFE", "APROBACION", "TRANSACCION", "TRANS:",
-    "TERMINAL", "PROPINA SUGERIDA", "AHORRO", "DESCUENTO"
+    "TERMINAL", "PROPINA SUGERIDA", "AHORRO", "DESCUENTO", "SUBTOTAL", "SUB-TOTAL", "VENTAS AL", "EXENTAS"
 ]
 
 MESES_ES = {
@@ -203,8 +203,8 @@ class ReceiptOcrAdapter(OcrExtractorPort):
 
     def _extraer_monto_total(self, lineas: List[str]) -> float:
         patrones_total = [
-            r"(?:VALOR\s*TOTAL\s*A\s*PAGAR|TOTAL\s*A\s*PAGAR|TOTAL\s*PAGAR|NETO\s*A\s*PAGAR|VALOR\s*A\s*PAGAR|TOTAL\s*FACTURA|VALOR\s*TOTAL|TOTAL\s*VENTA|TOTAL\s*COMPRA|TOTAL\s*CON\s*PROPINA|TOTAL\s*COP)",
-            r"(?:^|[\s\*\.\-\:])(?:TOTAL|TOT4L|T0TAL|TOTL)(?:[\s:\$]|$)",
+            r"(?:VALOR\s*TOTAL\s*A\s*PAGAR|TOTAL\s*A\s*PAGAR|TOTAL\s*PAGAR|NETO\s*A\s*PAGAR|VALOR\s*A\s*PAGAR|TOTAL\s*FACTURA|VALOR\s*TOTAL|VALORTOTAL|TOTAL\s*VENTA|TOTAL\s*COMPRA|TOTAL\s*CON\s*PROPINA|TOTAL\s*COP)",
+            r"(?:^|[\s\*\.\-\:])(?:TOTAL|TOT4L|T0TAL|TOTL)(?:[\s\.\:\$]|$)",
             r"(?:VALOR\s*NETO|IMPORTE\s*TOTAL|PAGO\s*TOTAL)"
         ]
 
@@ -226,12 +226,46 @@ class ReceiptOcrAdapter(OcrExtractorPort):
                                 for cs in self._extraer_candidatos_linea(sig_linea):
                                     conteo_candidatos[cs[0]] = conteo_candidatos.get(cs[0], 0) + (cs[1] * 2)
 
+        efec_val = None
+        cambio_val = None
+        sub_pos = None
+        iva_pos = 0.0
+
+        for linea in lineas_limpias:
+            l_up = linea.upper()
+            if any(k in l_up for k in ["EFECTIVO", "ERECFIVO", "RECIBIDO", "VALOR ENTREGADO"]):
+                cands = self._extraer_candidatos_linea(linea)
+                if cands:
+                    efec_val = max(cands, key=lambda x: x[1])[0]
+            elif any(k in l_up for k in ["CAMBIO", "SAMBIO", "DEVUELTA"]):
+                cands = self._extraer_candidatos_linea(linea)
+                if cands:
+                    cambio_val = max(cands, key=lambda x: x[1])[0]
+            elif "SUBTOTAL" in l_up:
+                cands = self._extraer_candidatos_linea(linea)
+                if cands:
+                    sub_pos = max(cands, key=lambda x: x[1])[0]
+            elif any(k in l_up for k in ["VENTAS AL 19%", "VENTAS AL 5%", "IVA 19%", "IVA 5%"]):
+                cands = self._extraer_candidatos_linea(linea)
+                if cands:
+                    iva_pos += max(cands, key=lambda x: x[1])[0]
+
+        if efec_val is not None and cambio_val is not None and efec_val > cambio_val:
+            calc_total = efec_val - cambio_val
+            if 1000 <= calc_total <= 50000000:
+                conteo_candidatos[calc_total] = conteo_candidatos.get(calc_total, 0) + 18
+
+        if sub_pos is not None and iva_pos > 0:
+            calc_sub_iva = round((sub_pos + iva_pos) / 10.0) * 10.0
+            if 1000 <= calc_sub_iva <= 50000000:
+                conteo_candidatos[calc_sub_iva] = conteo_candidatos.get(calc_sub_iva, 0) + 12
+
         subtotales = []
         for linea in reversed(lineas_limpias):
             l_up = linea.upper()
             if any(p in l_up for p in PALABRAS_PROHIBIDAS_TOTAL):
                 continue
-            if any(k in l_up for k in ["ACUEDUCTO", "ALCANTARILLADO", "ASEO", "ENERGIA", "GAS", "SUBTOTAL"]):
+            if any(k in l_up for k in ["ACUEDUCTO", "ALCANTARILLADO", "ASEO", "ENERGIA", "GAS"]):
                 cands = self._extraer_candidatos_linea(linea)
                 if cands:
                     val = max(cands, key=lambda x: x[1])[0]
@@ -262,7 +296,8 @@ class ReceiptOcrAdapter(OcrExtractorPort):
                             conteo_candidatos[target_key] = conteo_candidatos.get(target_key, 0) + votes
 
             agrupados: Dict[float, int] = {}
-            for v, votes in conteo_candidatos.items():
+            for v in sorted(conteo_candidatos.keys(), key=lambda x: (x % 10 == 0, conteo_candidatos[x]), reverse=True):
+                votes = conteo_candidatos[v]
                 matched = False
                 for rep in list(agrupados.keys()):
                     if abs(rep - v) <= 50:
@@ -304,15 +339,16 @@ class ReceiptOcrAdapter(OcrExtractorPort):
         s = re.sub(r'[_\-\|~*#><\[\]\(\)\u2014\u2013]', ' ', linea)
         s = re.sub(r'\b\d{1,4}[/\.]\d{1,2}[/\.]\d{1,4}\b', ' ', s)
         s = re.sub(r'\b\d{1,2}:\d{2}(?::\d{2})?\b', ' ', s)
-        s = re.sub(r'\b\d{7,10}(?:-\d)?\b', ' ', s)
+        s = re.sub(r'\b\d{7,14}(?:-\d)?\b', ' ', s)
         s = re.sub(r'(?<=\d)\s+(?=\d)', '', s)
+        s = re.sub(r'(?<=\.)\s+(?=[0-9OolEBSTZeasUuAaVvb])', '', s)
 
         candidatos = []
-
-        pat_moneda = r'(?:[\$£€S@‘\']|COP|PESOS)\s*([0-9OolEBSTZeas]{1,3}(?:[.,][0-9OolEBSTZeas]{3})*(?:[.,][0-9]{2})?|[0-9OolEBSTZeas]{4,8})'
+        chars = r'[0-9OolEBSTZeasUuAaVvb@]'
+        pat_moneda = rf'(?:[\$£€S@‘\']|COP|C0P|CAP|CEP|CUP|CUR|COR|PESOS)\s*({chars}{{1,3}}(?:[.,]{chars}{{3}})*(?:[.,]{chars}{{2}})?|{chars}{{4,8}})'
         for m in re.finditer(pat_moneda, s, re.IGNORECASE):
             raw = m.group(1)
-            if sum(1 for c in raw if c.isdigit()) >= 2:
+            if any(c.isdigit() for c in raw) or re.search(r'[.,]', raw):
                 val = self._normalizar_numero_colombiano(raw)
                 if 1000 <= val <= 50000000:
                     candidatos.append((val, 3))
@@ -323,20 +359,26 @@ class ReceiptOcrAdapter(OcrExtractorPort):
             if 1000 <= val <= 50000000:
                 candidatos.append((val, 2))
 
+        pat_dec = r'(?:^|\s)([0-9]{4,7}[.,][0-9]{2})(?:\s|$)'
+        for m in re.finditer(pat_dec, s):
+            val = self._normalizar_numero_colombiano(m.group(1))
+            if 1000 <= val <= 50000000:
+                candidatos.append((val, 2))
+
         pat_dig = r'(?:^|\s)([0-9]{4,8})(?:\s|$)'
         for m in re.finditer(pat_dig, s):
             val = self._normalizar_numero_colombiano(m.group(1))
-            if 1000 <= val <= 50000000 and val not in (2024, 2025, 2026, 2027):
+            if 1000 <= val <= 50000000 and val not in (2024, 2025, 2026, 2027, 2028):
                 candidatos.append((val, 1))
 
         return candidatos
 
     def _normalizar_numero_colombiano(self, cadena: str) -> float:
         char_map = {
-            'O': '0', 'o': '0', 'Q': '0', 'D': '0',
+            'O': '0', 'o': '0', 'Q': '0', 'D': '0', 'U': '0', 'u': '0',
             'l': '1', 'I': '1', 'i': '1', '!': '1',
             'Z': '2', 'z': '2',
-            'E': '8', 'e': '8', 'B': '8',
+            'E': '8', 'e': '8', 'B': '8', 'b': '8', 'a': '8', 'A': '8', 'v': '8', 'V': '8',
             'S': '5', 's': '5',
             'T': '7', 'r': '7',
             '@': '0', '#': '0', 'H': '0'
@@ -350,7 +392,7 @@ class ReceiptOcrAdapter(OcrExtractorPort):
                 res.append(char_map[ch])
 
         limpio = "".join(res)
-        if re.search(r'[\.,]\d{2}$', limpio) and len(limpio) > 5:
+        if re.search(r'[\.,]\d{2}$', limpio) and len(limpio) >= 6:
             limpio = limpio[:-3]
         solo_digitos = re.sub(r'[^\d]', '', limpio)
         if not solo_digitos:
