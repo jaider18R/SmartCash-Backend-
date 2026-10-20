@@ -2,7 +2,7 @@ import io
 import os
 import re
 from datetime import date
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from PIL import Image, ImageOps, ImageFilter
 import pytesseract
 from app.domain.ports.ocr_extractor_port import OcrExtractorPort
@@ -68,11 +68,19 @@ COMERCIOS_CONOCIDOS = {
 }
 
 PALABRAS_IGNORAR_ENCABEZADO = [
-    "FACTURA", "ELECTRONICA", "VENTA", "POS", "TIQUETE", "MAQUina",
+    "FACTURA", "ELECTRONICA", "VENTA", "POS", "TIQUETE", "MAQUINA",
     "REGIMEN", "RESPONSABLE", "IVA", "AUTORIZACION", "DIAN", "RESOLUCION",
     "DIRECCION", "TELEFONO", "TEL:", "NIT", "CAJERO", "CAJA", "FECHA",
     "CLIENTE", "CONSUMIDOR FINAL", "COPIA", "ORIGINAL", "BIENVENIDO",
     "GRACIAS POR SU COMPRA", "DOCUMENTO EQUIVALENTE"
+]
+
+PALABRAS_PROHIBIDAS_TOTAL = [
+    "CAMBIO", "DEVUELTA", "SU CAMBIO", "EFECTIVO", "RECIBIDO", "ENTREGADO",
+    "VALOR ENTREGADO", "AUTORIZACION", "RESOLUCION", "DIAN", "FACTURA",
+    "CAJERO", "CAJA", "PUNTOS", "MILLAS", "TELEFONO", "TEL:", "TEL.",
+    "CEL:", "CEL.", "NIT", "CUFE", "APROBACION", "TRANSACCION", "TRANS:",
+    "TERMINAL", "PROPINA SUGERIDA", "AHORRO", "DESCUENTO"
 ]
 
 MESES_ES = {
@@ -96,19 +104,22 @@ class ReceiptOcrAdapter(OcrExtractorPort):
             imagen_proc = ImageOps.exif_transpose(imagen)
             imagen_proc = ImageOps.grayscale(imagen_proc)
             ancho, alto = imagen_proc.size
-            if ancho < 1000:
-                escala = 1200.0 / max(ancho, 1)
-                imagen_proc = imagen_proc.resize((int(ancho * escala), int(alto * escala)))
-            imagen_proc = ImageOps.autocontrast(imagen_proc)
+            if ancho < 1200:
+                escala = 1400.0 / max(ancho, 1)
+                imagen_proc = imagen_proc.resize((int(ancho * escala), int(alto * escala)), Image.Resampling.LANCZOS)
+            imagen_proc = ImageOps.autocontrast(imagen_proc, cutoff=2)
             imagen_proc = imagen_proc.filter(ImageFilter.SHARPEN)
 
             try:
-                texto_extraido = pytesseract.image_to_string(imagen_proc, lang="spa+eng", config="--psm 6")
+                texto_extraido = pytesseract.image_to_string(imagen_proc, lang="spa+eng", config="--psm 4")
             except Exception:
                 try:
-                    texto_extraido = pytesseract.image_to_string(imagen_proc, config="--psm 6")
+                    texto_extraido = pytesseract.image_to_string(imagen_proc, config="--psm 4")
                 except Exception:
-                    texto_extraido = ""
+                    try:
+                        texto_extraido = pytesseract.image_to_string(imagen_proc, config="--psm 6")
+                    except Exception:
+                        texto_extraido = ""
         finally:
             if imagen_proc is not None:
                 imagen_proc.close()
@@ -162,53 +173,89 @@ class ReceiptOcrAdapter(OcrExtractorPort):
         return "Comercio Factura Escaneada"
 
     def _extraer_monto_total(self, lineas: List[str]) -> float:
-        patrones_prioritarios = [
-            r"(?:TOTAL\s*A\s*PAGAR|VALOR\s*TOTAL|TOTAL\s*VENTA|NETO\s*A\s*PAGAR|TOTAL\s*COP|VENTA\s*TOTAL|TOTAL\s*FACTURA)",
-            r"(?:^|\s)TOTAL(?:$|\s|:|\$)",
-            r"(?:EFECTIVO|TARJETA|RECIBIDO|PAGADO|SUBTOTAL)"
+        patrones_total = [
+            r"(?:TOTAL\s*A\s*PAGAR|TOTAL\s*PAGAR|NETO\s*A\s*PAGAR|VALOR\s*A\s*PAGAR|TOTAL\s*FACTURA|VALOR\s*TOTAL|TOTAL\s*VENTA|TOTAL\s*COMPRA|TOTAL\s*CON\s*PROPINA|TOTAL\s*COP)",
+            r"(?:^|[\s\*\.\-\:])(?:TOTAL|TOT4L|T0TAL|TOTL)(?:[\s:\$]|$)",
+            r"(?:VALOR\s*NETO|IMPORTE\s*TOTAL|PAGO\s*TOTAL)"
         ]
 
-        for patron in patrones_prioritarios:
-            candidatos = []
-            for idx, linea in enumerate(lineas):
+        lineas_limpias = [(i, l.strip()) for i, l in enumerate(lineas) if l.strip()]
+
+        for patron in patrones_total:
+            for idx, linea in reversed(lineas_limpias):
                 l_up = linea.upper()
-                if any(excl in l_up for excl in ["CAMBIO", "DEVUELTA", "IVA ", "DESCUENTO", "AHORRO", "PUNTOS", "CANTIDAD", "ITEMS"]):
+                if any(p in l_up for p in PALABRAS_PROHIBIDAS_TOTAL):
                     continue
                 if re.search(patron, l_up):
-                    valores = self._extraer_valores_monetarios(linea)
-                    if not valores and idx + 1 < len(lineas):
-                        valores = self._extraer_valores_monetarios(lineas[idx + 1])
-                    candidatos.extend(valores)
-            if candidatos:
-                return float(max(candidatos))
+                    cands = self._extraer_candidatos_linea(linea)
+                    if cands:
+                        cands.sort(key=lambda x: (x[1], x[0]), reverse=True)
+                        return cands[0][0]
+                    if idx + 1 < len(lineas):
+                        cands_sig = self._extraer_candidatos_linea(lineas[idx + 1])
+                        if cands_sig:
+                            cands_sig.sort(key=lambda x: (x[1], x[0]), reverse=True)
+                            return cands_sig[0][0]
 
-        todos_los_valores = []
-        for linea in lineas:
+        for idx, linea in reversed(lineas_limpias):
             l_up = linea.upper()
-            if any(excl in l_up for excl in ["NIT", "RESOLUCION", "AUTORIZACION", "TEL", "CEL", "CAJA", "FACTURA", "FECHA", "CAMBIO"]):
+            if any(p in l_up for p in PALABRAS_PROHIBIDAS_TOTAL):
                 continue
-            todos_los_valores.extend(self._extraer_valores_monetarios(linea))
+            if "SUBTOTAL" in l_up or "VALOR" in l_up:
+                cands = self._extraer_candidatos_linea(linea)
+                if cands:
+                    cands.sort(key=lambda x: (x[1], x[0]), reverse=True)
+                    return cands[0][0]
 
-        if todos_los_valores:
-            return float(max(todos_los_valores))
+        candidatos_moneda = []
+        for _, linea in reversed(lineas_limpias):
+            l_up = linea.upper()
+            if any(p in l_up for p in PALABRAS_PROHIBIDAS_TOTAL):
+                continue
+            cands = self._extraer_candidatos_linea(linea)
+            cands_pesados = [c for c in cands if c[1] >= 2]
+            candidatos_moneda.extend(cands_pesados)
+
+        if candidatos_moneda:
+            candidatos_moneda.sort(key=lambda x: (x[1], x[0]), reverse=True)
+            return candidatos_moneda[0][0]
 
         return 0.0
 
-    def _extraer_valores_monetarios(self, texto_linea: str) -> List[float]:
-        resultados = []
-        linea_sin_fechas = re.sub(r"\b\d{1,4}[/\-]\d{1,2}[/\-]\d{1,4}\b", " ", texto_linea)
-        linea_sin_horas = re.sub(r"\b\d{1,2}:\d{2}(?::\d{2})?\b", " ", linea_sin_fechas)
-        linea_sin_nit = re.sub(r"\b\d{8,10}-\d\b", " ", linea_sin_horas)
+    def _extraer_candidatos_linea(self, linea: str) -> List[Tuple[float, int]]:
+        limpia = re.sub(r"\b\d{1,4}[/\-\.]\d{1,2}[/\-\.]\d{1,4}\b", " ", linea)
+        limpia = re.sub(r"\b\d{1,2}:\d{2}(?::\d{2})?\b", " ", limpia)
+        limpia = re.sub(r"\b\d{7,10}(?:-\d)?\b", " ", limpia)
 
-        coincidencias = re.findall(r"(?:\$\s*)?(\d{1,3}(?:[\.,]\d{3})+(?:[\.,]\d{2})?|\d{4,8}(?:[\.,]\d{2})?)", linea_sin_nit)
-        for bruto in coincidencias:
-            valor = self._normalizar_numero_colombiano(bruto)
-            if 500 <= valor <= 50000000 and valor not in (2024, 2025, 2026, 2027):
-                resultados.append(valor)
-        return resultados
+        candidatos = []
+
+        m_moneda = re.findall(r"[\$\£\€]\s*([0-9Ool]{1,3}(?:[\.,][0-9Ool]{3})*(?:[\.,][0-9]{2})?|[0-9]{3,7})", limpia)
+        for m in m_moneda:
+            val = self._normalizar_numero_colombiano(m)
+            if 500 <= val <= 25000000:
+                candidatos.append((val, 3))
+
+        m_miles = re.findall(r"\b([0-9]{1,3}(?:[\.,][0-9Ool]{3})+(?:[\.,][0-9]{2})?)\b", limpia)
+        for m in m_miles:
+            val = self._normalizar_numero_colombiano(m)
+            if 500 <= val <= 25000000:
+                candidatos.append((val, 2))
+
+        m_digitos = re.findall(r"\b([0-9]{4,7})\b", limpia)
+        for m in m_digitos:
+            val = float(m)
+            if 500 <= val <= 25000000 and val not in (2024, 2025, 2026, 2027):
+                candidatos.append((val, 1))
+
+        return candidatos
 
     def _normalizar_numero_colombiano(self, cadena: str) -> float:
         limpio = cadena.strip()
+        limpio = re.sub(r"(?<=[.,\d])[Oo](?=[.,\d]|$)", "0", limpio)
+        limpio = re.sub(r"(?<=[.,])[Oo]{3}\b", "000", limpio)
+        limpio = re.sub(r"(?<=[.,])[Oo]{2}\b", "00", limpio)
+        limpio = re.sub(r"(?<=\d)[lI](?=\d)", "1", limpio)
+
         if re.search(r"[\.,]\d{2}$", limpio) and len(limpio) > 4:
             limpio = limpio[:-3]
         solo_digitos = re.sub(r"[^\d]", "", limpio)
