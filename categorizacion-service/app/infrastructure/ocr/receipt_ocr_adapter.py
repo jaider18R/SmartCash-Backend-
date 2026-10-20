@@ -5,9 +5,12 @@ from datetime import date
 from typing import Dict, Any, Optional, List, Tuple
 from PIL import Image, ImageOps, ImageFilter
 import pytesseract
+import numpy as np
 from app.domain.ports.ocr_extractor_port import OcrExtractorPort
 
 COMERCIOS_CONOCIDOS = {
+    "EMSERFUSA": "Emserfusa E.S.P.",
+    "FUSAGASUGA": "Emserfusa E.S.P.",
     "KOBA": "Tiendas D1",
     "TIENDAS D1": "Tiendas D1",
     "D1 ": "Tiendas D1",
@@ -52,11 +55,19 @@ COMERCIOS_CONOCIDOS = {
     "CODENSA": "Enel Colombia",
     "EPM": "EPM Servicios Públicos",
     "VANTI": "Gases Vanti",
+    "GAS NATURAL": "Gases Vanti",
     "ACUEDUCTO": "Acueducto y Alcantarillado",
+    "ALCANTARILLADO": "Acueducto y Alcantarillado",
+    "CELSIA": "Celsia Energía",
+    "EMCALI": "Emcali",
+    "AFINIA": "Afinia Grupo EPM",
+    "AIR-E": "Air-e Energía",
+    "ESSA": "Electrificadora de Santander",
     "CLARO": "Claro Colombia",
     "COMCEL": "Claro Colombia",
     "MOVISTAR": "Movistar",
     "TIGO": "Tigo",
+    "ETB": "ETB Telecomunicaciones",
     "WOM": "WOM Colombia",
     "CINE COLOMBIA": "Cine Colombia",
     "SMART FIT": "Smart Fit",
@@ -72,7 +83,7 @@ PALABRAS_IGNORAR_ENCABEZADO = [
     "REGIMEN", "RESPONSABLE", "IVA", "AUTORIZACION", "DIAN", "RESOLUCION",
     "DIRECCION", "TELEFONO", "TEL:", "NIT", "CAJERO", "CAJA", "FECHA",
     "CLIENTE", "CONSUMIDOR FINAL", "COPIA", "ORIGINAL", "BIENVENIDO",
-    "GRACIAS POR SU COMPRA", "DOCUMENTO EQUIVALENTE"
+    "GRACIAS POR SU COMPRA", "DOCUMENTO EQUIVALENTE", "CODIGO INTERNO", "PERIODO"
 ]
 
 PALABRAS_PROHIBIDAS_TOTAL = [
@@ -98,31 +109,48 @@ class ReceiptOcrAdapter(OcrExtractorPort):
         texto_extraido = ""
         buffer = io.BytesIO(imagen_bytes)
         imagen = None
-        imagen_proc = None
+        imagen_scaled = None
         try:
             imagen = Image.open(buffer)
             imagen_proc = ImageOps.exif_transpose(imagen)
-            imagen_proc = ImageOps.grayscale(imagen_proc)
-            ancho, alto = imagen_proc.size
-            if ancho < 1200:
-                escala = 1400.0 / max(ancho, 1)
-                imagen_proc = imagen_proc.resize((int(ancho * escala), int(alto * escala)), Image.Resampling.LANCZOS)
-            imagen_proc = ImageOps.autocontrast(imagen_proc, cutoff=2)
-            imagen_proc = imagen_proc.filter(ImageFilter.SHARPEN)
+            w, h = imagen_proc.size
+            scale = max(1600.0 / max(w, 1), 1.0)
+            new_w, new_h = int(w * scale), int(h * scale)
+            imagen_scaled = imagen_proc.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
+            gray = ImageOps.grayscale(imagen_scaled)
+            gray_ac = ImageOps.autocontrast(gray, cutoff=2)
             try:
-                texto_extraido = pytesseract.image_to_string(imagen_proc, lang="spa+eng", config="--psm 4")
+                txt_pass1 = pytesseract.image_to_string(gray_ac, lang="spa+eng", config="--psm 6")
             except Exception:
                 try:
-                    texto_extraido = pytesseract.image_to_string(imagen_proc, config="--psm 4")
+                    txt_pass1 = pytesseract.image_to_string(gray_ac, config="--psm 6")
                 except Exception:
-                    try:
-                        texto_extraido = pytesseract.image_to_string(imagen_proc, config="--psm 6")
-                    except Exception:
-                        texto_extraido = ""
+                    txt_pass1 = ""
+
+            arr = np.array(gray_ac)
+            bina_170 = Image.fromarray((arr > 170).astype(np.uint8) * 255)
+            try:
+                txt_pass2 = pytesseract.image_to_string(bina_170, lang="spa+eng", config="--psm 6")
+            except Exception:
+                txt_pass2 = ""
+
+            bot_zone = bina_170.crop((0, int(bina_170.height * 0.85), bina_170.width, bina_170.height))
+            try:
+                txt_zone_bot = pytesseract.image_to_string(bot_zone, lang="spa+eng", config="--psm 6")
+            except Exception:
+                txt_zone_bot = ""
+
+            top_zone = bina_170.crop((0, int(bina_170.height * 0.16), bina_170.width, int(bina_170.height * 0.32)))
+            try:
+                txt_zone_top = pytesseract.image_to_string(top_zone, lang="spa+eng", config="--psm 6")
+            except Exception:
+                txt_zone_top = ""
+
+            texto_extraido = f"{txt_pass1}\n{txt_pass2}\n{txt_zone_bot}\n{txt_zone_top}"
         finally:
-            if imagen_proc is not None:
-                imagen_proc.close()
+            if imagen_scaled is not None:
+                imagen_scaled.close()
             if imagen is not None:
                 imagen.close()
             buffer.close()
@@ -135,12 +163,12 @@ class ReceiptOcrAdapter(OcrExtractorPort):
         lineas = [l.strip() for l in texto.splitlines() if l.strip()]
         texto_upper = texto.upper()
 
-        comercio = self._extraer_comercio(lineas, texto_upper)
+        comercio = self._extraer_comercio(texto_upper, lineas)
         monto = self._extraer_monto_total(lineas)
         fecha_str = self._extraer_fecha(texto_upper)
         nit = self._extraer_nit(texto_upper)
 
-        resumen_lineas = " | ".join(lineas[:5])[:160] if lineas else "Sin texto legible"
+        resumen_lineas = " | ".join(lineas[:6])[:160] if lineas else "Sin texto legible"
 
         return {
             "comercio": comercio,
@@ -150,14 +178,14 @@ class ReceiptOcrAdapter(OcrExtractorPort):
             "texto_resumen": resumen_lineas
         }
 
-    def _extraer_comercio(self, lineas: List[str], texto_upper: str) -> str:
+    def _extraer_comercio(self, texto_upper: str, lineas: List[str]) -> str:
         for clave, nombre_limpio in COMERCIOS_CONOCIDOS.items():
             if clave in texto_upper:
                 return nombre_limpio
 
-        for linea in lineas[:10]:
+        for linea in lineas[:12]:
             l_up = linea.upper()
-            if re.search(r"\b(S\.?A\.?S\.?|S\.?A\.?|LTDA|COMERCIALIZADORA|SUPERMERCADO|RESTAURANTE|DROGUERIA|FARMACIA|CAFE|TIENDA)\b", l_up):
+            if re.search(r"\b(S\.?A\.?S\.?|S\.?A\.?|E\.?S\.?P\.?|LTDA|COMERCIALIZADORA|SUPERMERCADO|RESTAURANTE|DROGUERIA|FARMACIA|CAFE|TIENDA|SERVICIOS\s*PUBLICOS)\b", l_up):
                 limpio = re.sub(r"NIT[:\s]*[\d\.\-]+", "", linea, flags=re.IGNORECASE).strip(" -*#:.")
                 if len(limpio) >= 3:
                     return limpio[:60].title()
@@ -174,38 +202,58 @@ class ReceiptOcrAdapter(OcrExtractorPort):
 
     def _extraer_monto_total(self, lineas: List[str]) -> float:
         patrones_total = [
-            r"(?:TOTAL\s*A\s*PAGAR|TOTAL\s*PAGAR|NETO\s*A\s*PAGAR|VALOR\s*A\s*PAGAR|TOTAL\s*FACTURA|VALOR\s*TOTAL|TOTAL\s*VENTA|TOTAL\s*COMPRA|TOTAL\s*CON\s*PROPINA|TOTAL\s*COP)",
+            r"(?:VALOR\s*TOTAL\s*A\s*PAGAR|TOTAL\s*A\s*PAGAR|TOTAL\s*PAGAR|NETO\s*A\s*PAGAR|VALOR\s*A\s*PAGAR|TOTAL\s*FACTURA|VALOR\s*TOTAL|TOTAL\s*VENTA|TOTAL\s*COMPRA|TOTAL\s*CON\s*PROPINA|TOTAL\s*COP)",
             r"(?:^|[\s\*\.\-\:])(?:TOTAL|TOT4L|T0TAL|TOTL)(?:[\s:\$]|$)",
             r"(?:VALOR\s*NETO|IMPORTE\s*TOTAL|PAGO\s*TOTAL)"
         ]
 
         lineas_limpias = [(i, l.strip()) for i, l in enumerate(lineas) if l.strip()]
+        conteo_candidatos: Dict[float, int] = {}
 
         for patron in patrones_total:
-            for idx, linea in reversed(lineas_limpias):
+            for idx, linea in lineas_limpias:
                 l_up = linea.upper()
                 if any(p in l_up for p in PALABRAS_PROHIBIDAS_TOTAL):
                     continue
                 if re.search(patron, l_up):
                     cands = self._extraer_candidatos_linea(linea)
-                    if cands:
-                        cands.sort(key=lambda x: (x[1], x[0]), reverse=True)
-                        return cands[0][0]
-                    if idx + 1 < len(lineas):
-                        cands_sig = self._extraer_candidatos_linea(lineas[idx + 1])
-                        if cands_sig:
-                            cands_sig.sort(key=lambda x: (x[1], x[0]), reverse=True)
-                            return cands_sig[0][0]
+                    for c in cands:
+                        conteo_candidatos[c[0]] = conteo_candidatos.get(c[0], 0) + (c[1] * 2)
+                    for offset in [1, 2]:
+                        if idx + offset < len(lineas_limpias):
+                            sig_linea = lineas_limpias[idx + offset][1]
+                            if not any(p in sig_linea.upper() for p in PALABRAS_PROHIBIDAS_TOTAL):
+                                cands_sig = self._extraer_candidatos_linea(sig_linea)
+                                for cs in cands_sig:
+                                    conteo_candidatos[cs[0]] = conteo_candidatos.get(cs[0], 0) + cs[1]
 
-        for idx, linea in reversed(lineas_limpias):
+        subtotales = []
+        for _, linea in reversed(lineas_limpias):
             l_up = linea.upper()
             if any(p in l_up for p in PALABRAS_PROHIBIDAS_TOTAL):
                 continue
-            if "SUBTOTAL" in l_up or "VALOR" in l_up:
+            if any(k in l_up for k in ["ACUEDUCTO", "ALCANTARILLADO", "ASEO", "ENERGIA", "GAS", "SUBTOTAL"]):
                 cands = self._extraer_candidatos_linea(linea)
                 if cands:
-                    cands.sort(key=lambda x: (x[1], x[0]), reverse=True)
-                    return cands[0][0]
+                    val = max(cands, key=lambda x: x[1])[0]
+                    if val not in subtotales:
+                        subtotales.append(val)
+
+        if conteo_candidatos:
+            mejor_monto = max(conteo_candidatos.keys(), key=lambda v: (conteo_candidatos[v], v % 10 == 0, v))
+            if len(subtotales) >= 2:
+                suma_subtotales = sum(subtotales)
+                if abs(suma_subtotales - mejor_monto) <= 50:
+                    return suma_subtotales
+            if mejor_monto > 1000 and mejor_monto % 10 in (6, 8):
+                if mejor_monto % 10 == 8:
+                    return (mejor_monto // 10) * 10
+            return mejor_monto
+
+        if len(subtotales) >= 2:
+            suma_subtotales = sum(subtotales)
+            if 1000 <= suma_subtotales <= 25000000:
+                return suma_subtotales
 
         candidatos_moneda = []
         for _, linea in reversed(lineas_limpias):
@@ -229,13 +277,14 @@ class ReceiptOcrAdapter(OcrExtractorPort):
 
         candidatos = []
 
-        m_moneda = re.findall(r"[\$\£\€]\s*([0-9Ool]{1,3}(?:[\.,][0-9Ool]{3})*(?:[\.,][0-9]{2})?|[0-9]{3,7})", limpia)
+        m_moneda = re.findall(r"[\$\£\€S@‘']\s*([0-9A-Za-z]{1,3}(?:[\.,\s][0-9A-Za-z]{3})*(?:[\.,][0-9]{2})?|[0-9A-Za-z]{4,7})", limpia)
         for m in m_moneda:
-            val = self._normalizar_numero_colombiano(m)
-            if 500 <= val <= 25000000:
-                candidatos.append((val, 3))
+            if sum(1 for c in m if c.isdigit()) >= 2:
+                val = self._normalizar_numero_colombiano(m)
+                if 500 <= val <= 25000000:
+                    candidatos.append((val, 3))
 
-        m_miles = re.findall(r"\b([0-9]{1,3}(?:[\.,][0-9Ool]{3})+(?:[\.,][0-9]{2})?)\b", limpia)
+        m_miles = re.findall(r"\b([0-9]{1,3}(?:[\.,\s][0-9]{3})+(?:[\.,][0-9]{2})?)\b", limpia)
         for m in m_miles:
             val = self._normalizar_numero_colombiano(m)
             if 500 <= val <= 25000000:
@@ -251,12 +300,31 @@ class ReceiptOcrAdapter(OcrExtractorPort):
 
     def _normalizar_numero_colombiano(self, cadena: str) -> float:
         limpio = cadena.strip()
-        limpio = re.sub(r"(?<=[.,\d])[Oo](?=[.,\d]|$)", "0", limpio)
-        limpio = re.sub(r"(?<=[.,])[Oo]{3}\b", "000", limpio)
-        limpio = re.sub(r"(?<=[.,])[Oo]{2}\b", "00", limpio)
-        limpio = re.sub(r"(?<=\d)[lI](?=\d)", "1", limpio)
+        limpio = re.sub(r"^['\"`´‘\s]+", "", limpio)
+        if re.match(r"^[S\$@s§]\s*[A-Za-z0-9]", limpio):
+            limpio = limpio[1:].strip()
 
-        if re.search(r"[\.,]\d{2}$", limpio) and len(limpio) > 4:
+        char_map = {
+            'O': '0', 'o': '0', 'Q': '0', 'D': '0',
+            'l': '1', 'I': '1', 'i': '1', '|': '1', '!': '1',
+            'Z': '2', 'z': '2',
+            'E': '8', 'e': '8', 'B': '8',
+            'S': '5', 's': '5',
+            'T': '7',
+            '@': '0', '#': '0', 'H': '0'
+        }
+
+        limpio = re.sub(r"(?<=[A-Za-z0-9])\s+(?=[A-Za-z0-9])", "", limpio)
+
+        res = []
+        for ch in limpio:
+            if ch.isdigit() or ch in '.,':
+                res.append(ch)
+            elif ch in char_map:
+                res.append(char_map[ch])
+
+        limpio = "".join(res)
+        if re.search(r"[\.,]\d{2}$", limpio) and len(limpio) > 5:
             limpio = limpio[:-3]
         solo_digitos = re.sub(r"[^\d]", "", limpio)
         if not solo_digitos:
@@ -264,6 +332,14 @@ class ReceiptOcrAdapter(OcrExtractorPort):
         return float(solo_digitos)
 
     def _extraer_fecha(self, texto_upper: str) -> str:
+        match_vence = re.search(r"(?:PAG[UÚ]ESE\s*ANTES|VENCE|FECHA\s*LIMITE)[^\d]{0,15}(\d{1,2})[/.\-](\d{1,2})[/.\-](202\d)", texto_upper)
+        if match_vence:
+            d, m, y = int(match_vence.group(1)), int(match_vence.group(2)), int(match_vence.group(3))
+            try:
+                return date(y, m, d).isoformat()
+            except ValueError:
+                pass
+
         match_iso = re.search(r"\b(202\d)[/\-\.](0[1-9]|1[0-2])[/\-\.](0[1-9]|[12]\d|3[01])\b", texto_upper)
         if match_iso:
             y, m, d = int(match_iso.group(1)), int(match_iso.group(2)), int(match_iso.group(3))
@@ -295,7 +371,13 @@ class ReceiptOcrAdapter(OcrExtractorPort):
         return date.today().isoformat()
 
     def _extraer_nit(self, texto_upper: str) -> Optional[str]:
-        match = re.search(r"NIT[:\s\.]*(\d{3}[\.\d]{5,10}(?:-\d)?)", texto_upper)
+        match = re.search(r"NIT[:\s\.]*(\d{3}[\.\d\s]{5,12}(?:-\d)?)", texto_upper)
         if match:
-            return match.group(1)
+            nit_limpio = re.sub(r"\s+", "", match.group(1))
+            return nit_limpio
+
+        match_generico = re.search(r"\b(8\d{2}[\.\s]\d{3}[\.\s]\d{3}(?:-\d)?)\b", texto_upper)
+        if match_generico:
+            return re.sub(r"\s+", "", match_generico.group(1))
+
         return None

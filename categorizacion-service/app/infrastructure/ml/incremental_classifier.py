@@ -58,6 +58,7 @@ class IncrementalClassifierAdapter(MLModelPort):
             ("epm servicios publicos agua energia", "Servicios y Suscripciones"),
             ("acueducto agua factura servicio", "Servicios y Suscripciones"),
             ("vanti gas natural factura servicio", "Servicios y Suscripciones"),
+            ("emserfusa servicios publicos agua alcantarillado aseo fusagasuga", "Servicios y Suscripciones"),
             ("uber viaje transporte carro", "Transporte y Viajes"),
             ("didi taxi viaje urbano", "Transporte y Viajes"),
             ("cabify viaje transporte", "Transporte y Viajes"),
@@ -127,8 +128,8 @@ class IncrementalClassifierAdapter(MLModelPort):
         if any(w in texto for w in ["rebaja", "cruz verde", "farmatodo", "pasteur", "farmacia", "drogueria", "sanitas", "eps"]):
             return "Salud y Farmacia", 0.90
 
-        if any(w in texto for w in ["netflix", "spotify", "claro", "tigo", "movistar", "enel", "codensa", "epm", "acueducto", "vanti"]):
-            return "Servicios y Suscripciones", 0.90
+        if any(w in texto for w in ["netflix", "spotify", "claro", "tigo", "movistar", "etb", "enel", "codensa", "epm", "acueducto", "alcantarillado", "aseo", "emserfusa", "servicios publicos", "vanti", "gas natural", "celsia", "emcali"]):
+            return "Servicios y Suscripciones", 0.95
 
         if any(w in texto for w in ["nequi", "daviplata", "bancolombia", "cajero"]):
             return "Transferencias y Finanzas", 0.90
