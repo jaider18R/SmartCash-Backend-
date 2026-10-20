@@ -88,7 +88,8 @@ PALABRAS_IGNORAR_ENCABEZADO = [
 
 PALABRAS_PROHIBIDAS_TOTAL = [
     "CAMBIO", "DEVUELTA", "SU CAMBIO", "EFECTIVO", "RECIBIDO", "ENTREGADO",
-    "VALOR ENTREGADO", "AUTORIZACION", "RESOLUCION", "DIAN", "FACTURA",
+    "VALOR ENTREGADO", "AUTORIZACION", "RESOLUCION", "DIAN", "FACTURA DE VENTA",
+    "FACTURA ELECTRONICA", "FACTURA NO", "FACTURA N°", "FACTURA N*", "NUMERO FACTURA",
     "CAJERO", "CAJA", "PUNTOS", "MILLAS", "TELEFONO", "TEL:", "TEL.",
     "CEL:", "CEL.", "NIT", "CUFE", "APROBACION", "TRANSACCION", "TRANS:",
     "TERMINAL", "PROPINA SUGERIDA", "AHORRO", "DESCUENTO"
@@ -207,28 +208,26 @@ class ReceiptOcrAdapter(OcrExtractorPort):
             r"(?:VALOR\s*NETO|IMPORTE\s*TOTAL|PAGO\s*TOTAL)"
         ]
 
-        lineas_limpias = [(i, l.strip()) for i, l in enumerate(lineas) if l.strip()]
+        lineas_limpias = [l.strip() for l in lineas if l.strip()]
         conteo_candidatos: Dict[float, int] = {}
 
         for patron in patrones_total:
-            for idx, linea in lineas_limpias:
+            for idx, linea in enumerate(lineas_limpias):
                 l_up = linea.upper()
                 if any(p in l_up for p in PALABRAS_PROHIBIDAS_TOTAL):
                     continue
                 if re.search(patron, l_up):
-                    cands = self._extraer_candidatos_linea(linea)
-                    for c in cands:
-                        conteo_candidatos[c[0]] = conteo_candidatos.get(c[0], 0) + (c[1] * 2)
+                    for c in self._extraer_candidatos_linea(linea):
+                        conteo_candidatos[c[0]] = conteo_candidatos.get(c[0], 0) + (c[1] * 3)
                     for offset in [1, 2]:
                         if idx + offset < len(lineas_limpias):
-                            sig_linea = lineas_limpias[idx + offset][1]
+                            sig_linea = lineas_limpias[idx + offset]
                             if not any(p in sig_linea.upper() for p in PALABRAS_PROHIBIDAS_TOTAL):
-                                cands_sig = self._extraer_candidatos_linea(sig_linea)
-                                for cs in cands_sig:
-                                    conteo_candidatos[cs[0]] = conteo_candidatos.get(cs[0], 0) + cs[1]
+                                for cs in self._extraer_candidatos_linea(sig_linea):
+                                    conteo_candidatos[cs[0]] = conteo_candidatos.get(cs[0], 0) + (cs[1] * 2)
 
         subtotales = []
-        for _, linea in reversed(lineas_limpias):
+        for linea in reversed(lineas_limpias):
             l_up = linea.upper()
             if any(p in l_up for p in PALABRAS_PROHIBIDAS_TOTAL):
                 continue
@@ -240,29 +239,60 @@ class ReceiptOcrAdapter(OcrExtractorPort):
                         subtotales.append(val)
 
         if conteo_candidatos:
-            mejor_monto = max(conteo_candidatos.keys(), key=lambda v: (conteo_candidatos[v], v % 10 == 0, v))
-            if len(subtotales) >= 2:
-                suma_subtotales = sum(subtotales)
-                if abs(suma_subtotales - mejor_monto) <= 50:
-                    return suma_subtotales
-            if mejor_monto > 1000 and mejor_monto % 10 in (6, 8):
-                if mejor_monto % 10 == 8:
-                    return (mejor_monto // 10) * 10
-            return mejor_monto
+            cands_keys = list(conteo_candidatos.keys())
+            for v in cands_keys:
+                if v >= 100000 and str(int(v)).startswith("5"):
+                    stripped = float(str(int(v))[1:])
+                    if stripped >= 1000:
+                        evidencia = False
+                        target_key = None
+                        for other in conteo_candidatos:
+                            if other != v:
+                                other_clean = float(str(int(other))[1:]) if (other >= 100000 and str(int(other)).startswith("5")) else other
+                                if abs(other_clean - stripped) <= 100 or str(int(other_clean))[:2] == str(int(stripped))[:2]:
+                                    evidencia = True
+                                    target_key = other if other < 100000 else stripped
+                                    break
+                        if not evidencia and any(abs(sub - stripped) <= 100 for sub in subtotales):
+                            evidencia = True
+                            target_key = stripped
+
+                        if evidencia and target_key:
+                            votes = conteo_candidatos.pop(v)
+                            conteo_candidatos[target_key] = conteo_candidatos.get(target_key, 0) + votes
+
+            agrupados: Dict[float, int] = {}
+            for v, votes in conteo_candidatos.items():
+                matched = False
+                for rep in list(agrupados.keys()):
+                    if abs(rep - v) <= 50:
+                        agrupados[rep] += votes
+                        matched = True
+                        break
+                if not matched:
+                    agrupados[v] = votes
+
+            if agrupados:
+                mejor_monto = max(agrupados.keys(), key=lambda v: (agrupados[v], v % 10 in (0, 5), -v if v > 200000 else v))
+                if len(subtotales) >= 2:
+                    suma_subtotales = sum(subtotales)
+                    if abs(suma_subtotales - mejor_monto) <= 50:
+                        return suma_subtotales
+                if mejor_monto > 1000 and mejor_monto % 10 in (1, 2, 3, 4, 6, 7, 8, 9):
+                    return float((int(mejor_monto) // 10) * 10)
+                return mejor_monto
 
         if len(subtotales) >= 2:
             suma_subtotales = sum(subtotales)
-            if 1000 <= suma_subtotales <= 25000000:
+            if 1000 <= suma_subtotales <= 50000000:
                 return suma_subtotales
 
         candidatos_moneda = []
-        for _, linea in reversed(lineas_limpias):
-            l_up = linea.upper()
-            if any(p in l_up for p in PALABRAS_PROHIBIDAS_TOTAL):
+        for linea in reversed(lineas_limpias):
+            if any(p in linea.upper() for p in PALABRAS_PROHIBIDAS_TOTAL):
                 continue
-            cands = self._extraer_candidatos_linea(linea)
-            cands_pesados = [c for c in cands if c[1] >= 2]
-            candidatos_moneda.extend(cands_pesados)
+            cands = [c for c in self._extraer_candidatos_linea(linea) if c[1] >= 2]
+            candidatos_moneda.extend(cands)
 
         if candidatos_moneda:
             candidatos_moneda.sort(key=lambda x: (x[1], x[0]), reverse=True)
@@ -271,62 +301,58 @@ class ReceiptOcrAdapter(OcrExtractorPort):
         return 0.0
 
     def _extraer_candidatos_linea(self, linea: str) -> List[Tuple[float, int]]:
-        limpia = re.sub(r"\b\d{1,4}[/\-\.]\d{1,2}[/\-\.]\d{1,4}\b", " ", linea)
-        limpia = re.sub(r"\b\d{1,2}:\d{2}(?::\d{2})?\b", " ", limpia)
-        limpia = re.sub(r"\b\d{7,10}(?:-\d)?\b", " ", limpia)
+        s = re.sub(r'[_\-\|~*#><\[\]\(\)\u2014\u2013]', ' ', linea)
+        s = re.sub(r'\b\d{1,4}[/\.]\d{1,2}[/\.]\d{1,4}\b', ' ', s)
+        s = re.sub(r'\b\d{1,2}:\d{2}(?::\d{2})?\b', ' ', s)
+        s = re.sub(r'\b\d{7,10}(?:-\d)?\b', ' ', s)
+        s = re.sub(r'(?<=\d)\s+(?=\d)', '', s)
 
         candidatos = []
 
-        m_moneda = re.findall(r"[\$\£\€S@‘']\s*([0-9A-Za-z]{1,3}(?:[\.,\s][0-9A-Za-z]{3})*(?:[\.,][0-9]{2})?|[0-9A-Za-z]{4,7})", limpia)
-        for m in m_moneda:
-            if sum(1 for c in m if c.isdigit()) >= 2:
-                val = self._normalizar_numero_colombiano(m)
-                if 500 <= val <= 25000000:
+        pat_moneda = r'(?:[\$£€S@‘\']|COP|PESOS)\s*([0-9OolEBSTZeas]{1,3}(?:[.,][0-9OolEBSTZeas]{3})*(?:[.,][0-9]{2})?|[0-9OolEBSTZeas]{4,8})'
+        for m in re.finditer(pat_moneda, s, re.IGNORECASE):
+            raw = m.group(1)
+            if sum(1 for c in raw if c.isdigit()) >= 2:
+                val = self._normalizar_numero_colombiano(raw)
+                if 1000 <= val <= 50000000:
                     candidatos.append((val, 3))
 
-        m_miles = re.findall(r"\b([0-9]{1,3}(?:[\.,\s][0-9]{3})+(?:[\.,][0-9]{2})?)\b", limpia)
-        for m in m_miles:
-            val = self._normalizar_numero_colombiano(m)
-            if 500 <= val <= 25000000:
+        pat_miles = r'(?:^|\s)([0-9]{1,3}(?:[.,][0-9]{3})+(?:[.,][0-9]{2})?)(?:\s|$)'
+        for m in re.finditer(pat_miles, s):
+            val = self._normalizar_numero_colombiano(m.group(1))
+            if 1000 <= val <= 50000000:
                 candidatos.append((val, 2))
 
-        m_digitos = re.findall(r"\b([0-9]{4,7})\b", limpia)
-        for m in m_digitos:
-            val = float(m)
-            if 500 <= val <= 25000000 and val not in (2024, 2025, 2026, 2027):
+        pat_dig = r'(?:^|\s)([0-9]{4,8})(?:\s|$)'
+        for m in re.finditer(pat_dig, s):
+            val = self._normalizar_numero_colombiano(m.group(1))
+            if 1000 <= val <= 50000000 and val not in (2024, 2025, 2026, 2027):
                 candidatos.append((val, 1))
 
         return candidatos
 
     def _normalizar_numero_colombiano(self, cadena: str) -> float:
-        limpio = cadena.strip()
-        limpio = re.sub(r"^['\"`´‘\s]+", "", limpio)
-        if re.match(r"^[S\$@s§]\s*[A-Za-z0-9]", limpio):
-            limpio = limpio[1:].strip()
-
         char_map = {
             'O': '0', 'o': '0', 'Q': '0', 'D': '0',
-            'l': '1', 'I': '1', 'i': '1', '|': '1', '!': '1',
+            'l': '1', 'I': '1', 'i': '1', '!': '1',
             'Z': '2', 'z': '2',
             'E': '8', 'e': '8', 'B': '8',
             'S': '5', 's': '5',
-            'T': '7',
+            'T': '7', 'r': '7',
             '@': '0', '#': '0', 'H': '0'
         }
 
-        limpio = re.sub(r"(?<=[A-Za-z0-9])\s+(?=[A-Za-z0-9])", "", limpio)
-
         res = []
-        for ch in limpio:
+        for ch in cadena:
             if ch.isdigit() or ch in '.,':
                 res.append(ch)
             elif ch in char_map:
                 res.append(char_map[ch])
 
         limpio = "".join(res)
-        if re.search(r"[\.,]\d{2}$", limpio) and len(limpio) > 5:
+        if re.search(r'[\.,]\d{2}$', limpio) and len(limpio) > 5:
             limpio = limpio[:-3]
-        solo_digitos = re.sub(r"[^\d]", "", limpio)
+        solo_digitos = re.sub(r'[^\d]', '', limpio)
         if not solo_digitos:
             return 0.0
         return float(solo_digitos)
