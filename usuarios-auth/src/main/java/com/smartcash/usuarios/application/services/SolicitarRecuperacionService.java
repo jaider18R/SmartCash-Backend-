@@ -23,7 +23,7 @@ public class SolicitarRecuperacionService implements SolicitarRecuperacionUseCas
             RepositorioUsuarioPort repositorioUsuario,
             RepositorioTokenRecuperacionPort repositorioToken,
             NotificacionClientPort notificacionClient,
-            @org.springframework.beans.factory.annotation.Value("${smartcash.frontend.url:http://192.168.1.7:5173}") String frontendUrl) {
+            @org.springframework.beans.factory.annotation.Value("${smartcash.frontend.url:http://localhost:5173}") String frontendUrl) {
         this.repositorioUsuario = repositorioUsuario;
         this.repositorioToken = repositorioToken;
         this.notificacionClient = notificacionClient;

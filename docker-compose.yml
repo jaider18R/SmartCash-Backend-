@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartcash_db_pass_2026}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en el archivo .env}
     ports:
       - "5432:5432"
     volumes:
@@ -28,6 +28,9 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    environment:
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS_PY:-*}
+      LOG_LEVEL: ${LOG_LEVEL_PY:-info}
     volumes:
       - categorizacion_data:/app/data
     networks:
@@ -44,6 +47,11 @@ services:
       - "8083:8083"
     environment:
       EMAIL_API_KEY: ${EMAIL_API_KEY:-mock-key}
+      EMAIL_REMITENTE: ${EMAIL_REMITENTE:-soporte@smartcash.com}
+      EMAIL_REMITENTE_NOMBRE: ${EMAIL_REMITENTE_NOMBRE:-SmartCash}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,http://172.*:*}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     networks:
       - smartcash-net
 
@@ -59,9 +67,13 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/usuarios_db
       SPRING_DATASOURCE_USERNAME: usuarios_user
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-smartcash_db_pass_2026}
-      SMARTCASH_JWT_SECRET: ${JWT_SECRET:-tu_clave_secreta_super_segura_de_al_menos_256_bits_smartcash_2026}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD en el archivo .env}
+      SMARTCASH_JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en el archivo .env}
       SMARTCASH_SERVICIOS_NOTIFICACIONES_URL: http://notificaciones-service:8083
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,http://172.*:*}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -82,10 +94,13 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/transacciones_db
       SPRING_DATASOURCE_USERNAME: transacciones_user
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-smartcash_db_pass_2026}
-      SMARTCASH_JWT_SECRET: ${JWT_SECRET:-tu_clave_secreta_super_segura_de_al_menos_256_bits_smartcash_2026}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD en el archivo .env}
+      SMARTCASH_JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en el archivo .env}
       SMARTCASH_SERVICIOS_CATEGORIZACION_URL: http://categorizacion-service:8000
       SMARTCASH_SERVICIOS_NOTIFICACIONES_URL: http://notificaciones-service:8083
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,http://172.*:*}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -105,6 +120,8 @@ services:
       - "8084:8084"
     environment:
       TRANSACCIONES_SERVICE_URL: http://transacciones-service:8082
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS_PY:-*}
+      LOG_LEVEL: ${LOG_LEVEL_PY:-info}
     depends_on:
       - transacciones-service
     networks:
