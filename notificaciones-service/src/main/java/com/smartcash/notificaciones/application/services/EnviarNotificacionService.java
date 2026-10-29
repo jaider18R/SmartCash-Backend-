@@ -4,6 +4,8 @@ import com.smartcash.notificaciones.domain.model.ResultadoEnvio;
 import com.smartcash.notificaciones.domain.model.TipoNotificacion;
 import com.smartcash.notificaciones.domain.ports.in.EnviarNotificacionUseCase;
 import com.smartcash.notificaciones.domain.ports.out.ProveedorEmailPort;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -12,9 +14,18 @@ import java.util.Map;
 public class EnviarNotificacionService implements EnviarNotificacionUseCase {
 
     private final ProveedorEmailPort proveedorEmailPort;
+    private final String frontendUrl;
 
     public EnviarNotificacionService(ProveedorEmailPort proveedorEmailPort) {
+        this(proveedorEmailPort, "http://localhost:5173");
+    }
+
+    @Autowired
+    public EnviarNotificacionService(
+            ProveedorEmailPort proveedorEmailPort,
+            @Value("${smartcash.frontend.url}") String frontendUrl) {
         this.proveedorEmailPort = proveedorEmailPort;
+        this.frontendUrl = frontendUrl;
     }
 
     @Override
@@ -131,7 +142,7 @@ public class EnviarNotificacionService implements EnviarNotificacionUseCase {
                                                     Te recomendamos ingresar a tu panel de control para revisar los movimientos recientes y ajustar tus proyecciones antes del fin de mes.
                                                 </p>
                                                 <div style="text-align: center;">
-                                                    <a href="http://localhost:5173" style="background-color: #0f172a; color: #ffffff; padding: 13px 26px; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600; display: inline-block;">Ver Mi Presupuesto</a>
+                                                    <a href="%s" style="background-color: #0f172a; color: #ffffff; padding: 13px 26px; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600; display: inline-block;">Ver Mi Presupuesto</a>
                                                 </div>
                                             </td>
                                         </tr>
@@ -146,7 +157,7 @@ public class EnviarNotificacionService implements EnviarNotificacionUseCase {
                         </table>
                     </body>
                     </html>
-                    """.formatted(nombreDestinatario, categoria, porcentaje);
+                    """.formatted(nombreDestinatario, categoria, porcentaje, frontendUrl);
             }
             default -> {
                 String mensaje = parametros != null ? parametros.getOrDefault("mensaje", "Notificación informativa de SmartCash.") : "Notificación informativa de SmartCash.";
