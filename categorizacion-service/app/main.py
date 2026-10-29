@@ -1,7 +1,10 @@
 import base64
 import os
-from fastapi import FastAPI, Depends, HTTPException
+import logging
+from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from app.infrastructure.observabilidad.logs_remoto import configurar_logs_remoto
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
@@ -29,6 +32,21 @@ app = FastAPI(
     version="1.0.0",
     description="Microservicio con Active & Incremental Learning para clasificacion y analisis de transacciones."
 )
+
+configurar_logs_remoto("categorizacion-service")
+logger = logging.getLogger("categorizacion-service")
+
+
+@app.exception_handler(Exception)
+async def manejar_error_no_controlado(request: Request, exc: Exception):
+    """Registra el error (consola + logs-service) y responde sin exponer detalles tecnicos."""
+    logger.error(
+        "Error no controlado en %s %s: %s", request.method, request.url.path, exc,
+        exc_info=(type(exc), exc, exc.__traceback__),
+        extra={"ruta": request.url.path, "metodo": request.method, "estado_http": 500},
+    )
+    return JSONResponse(status_code=500, content={"detail": "Ocurrio un error interno. Intenta de nuevo mas tarde."})
+
 
 app.add_middleware(
     CORSMiddleware,

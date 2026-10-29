@@ -24,3 +24,17 @@ Las marcadas como **obligatorias** no tienen valor por defecto: sin ellas el ser
 | `TRANSACCIONES_SERVICE_URL` | analítica | No | `http://localhost:8082` | URL del servicio de transacciones |
 | `SPRING_DATASOURCE_URL` / `_USERNAME` | usuarios-auth, transacciones | No | localhost | Conexión a PostgreSQL |
 | `DATABASE_URL` | categorización | No | SQLite local | Base de datos de categorización |
+
+## Logs centralizados (logs-service)
+
+Los errores (nivel ERROR) y advertencias (WARN) de los 5 microservicios se envian a `logs-service`
+(puerto 8085), que los guarda en la base de datos `logs_db`, tabla `logs_sistema`. Los logs tambien
+siguen saliendo por consola. Ver `logs-service/README.md`.
+
+| Variable | Servicios | Por defecto | Descripcion |
+|---|---|---|---|
+| `LOGS_HABILITADO` | todos | `true` | Si es `false`, el servicio no envia logs al logs-service |
+| `SMARTCASH_SERVICIOS_LOGS_URL` | servicios Java | `http://localhost:8085` | URL del logs-service |
+| `LOGS_SERVICE_URL` | servicios Python | `http://localhost:8085` | URL del logs-service |
+| `LOGS_NIVEL_MINIMO` | servicios Python | `WARNING` | Nivel minimo que se envia |
+| `LOGS_API_KEY` | logs-service | vacio | Protege consulta y purga de logs |

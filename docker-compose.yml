@@ -31,6 +31,8 @@ services:
     environment:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS_PY:-*}
       LOG_LEVEL: ${LOG_LEVEL_PY:-info}
+      LOGS_SERVICE_URL: http://logs-service:8085
+      LOGS_HABILITADO: ${LOGS_HABILITADO:-true}
     volumes:
       - categorizacion_data:/app/data
     networks:
@@ -52,6 +54,8 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,http://172.*:*}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SMARTCASH_SERVICIOS_LOGS_URL: http://logs-service:8085
+      LOGS_HABILITADO: ${LOGS_HABILITADO:-true}
     networks:
       - smartcash-net
 
@@ -73,6 +77,8 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,http://172.*:*}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SMARTCASH_SERVICIOS_LOGS_URL: http://logs-service:8085
+      LOGS_HABILITADO: ${LOGS_HABILITADO:-true}
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
     depends_on:
       postgres-db:
@@ -100,6 +106,8 @@ services:
       SMARTCASH_SERVICIOS_NOTIFICACIONES_URL: http://notificaciones-service:8083
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,http://172.*:*}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SMARTCASH_SERVICIOS_LOGS_URL: http://logs-service:8085
+      LOGS_HABILITADO: ${LOGS_HABILITADO:-true}
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
     depends_on:
       postgres-db:
@@ -122,8 +130,30 @@ services:
       TRANSACCIONES_SERVICE_URL: http://transacciones-service:8082
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS_PY:-*}
       LOG_LEVEL: ${LOG_LEVEL_PY:-info}
+      LOGS_SERVICE_URL: http://logs-service:8085
+      LOGS_HABILITADO: ${LOGS_HABILITADO:-true}
     depends_on:
       - transacciones-service
+    networks:
+      - smartcash-net
+
+  logs-service:
+    build:
+      context: ./logs-service
+      dockerfile: Dockerfile
+    image: smartcash/logs-service:1.0.0
+    container_name: smartcash-logs
+    restart: unless-stopped
+    ports:
+      - "8085:8085"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en el archivo .env}@postgres-db:5432/logs_db
+      LOGS_API_KEY: ${LOGS_API_KEY:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS_PY:-*}
+      LOG_LEVEL: ${LOG_LEVEL_PY:-info}
+    depends_on:
+      postgres-db:
+        condition: service_healthy
     networks:
       - smartcash-net
 

@@ -1,7 +1,10 @@
 import os
 from datetime import date
-from fastapi import FastAPI, Header, HTTPException, Query
+import logging
+from fastapi import FastAPI, Request, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from app.infrastructure.observabilidad.logs_remoto import configurar_logs_remoto
 from typing import Optional
 
 from app.api.schemas import (
@@ -31,6 +34,21 @@ app = FastAPI(
     version="1.0.0",
     description="Microservicio para agregaciones analiticas, calculo de gasto seguro diario y simulaciones What-If."
 )
+
+configurar_logs_remoto("analitica-service")
+logger = logging.getLogger("analitica-service")
+
+
+@app.exception_handler(Exception)
+async def manejar_error_no_controlado(request: Request, exc: Exception):
+    """Registra el error (consola + logs-service) y responde sin exponer detalles tecnicos."""
+    logger.error(
+        "Error no controlado en %s %s: %s", request.method, request.url.path, exc,
+        exc_info=(type(exc), exc, exc.__traceback__),
+        extra={"ruta": request.url.path, "metodo": request.method, "estado_http": 500},
+    )
+    return JSONResponse(status_code=500, content={"detail": "Ocurrio un error interno. Intenta de nuevo mas tarde."})
+
 
 app.add_middleware(
     CORSMiddleware,
