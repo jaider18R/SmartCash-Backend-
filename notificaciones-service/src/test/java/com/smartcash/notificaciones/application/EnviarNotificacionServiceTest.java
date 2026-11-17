@@ -81,4 +81,18 @@ class EnviarNotificacionServiceTest {
         assertFalse(resultado.exitoso());
         assertEquals("Error SMTP", resultado.detalle());
     }
+
+    @Test
+    void deberiaCubrirRamasConValoresPorDefectoYParametrosNulos() {
+        ResultadoEnvio ok = new ResultadoEnvio(true, "id-1", "test@test.com", "Brevo", "OK", LocalDateTime.now());
+        when(proveedorEmailMock.enviar(anyString(), any(), anyString(), anyString())).thenReturn(ok);
+
+        ResultadoEnvio r1 = service.enviar("test@test.com", "", TipoNotificacion.GENERAL, "   ", null);
+        ResultadoEnvio r2 = service.enviar("test@test.com", null, TipoNotificacion.ALERTA_PRESUPUESTO, null, null);
+        ResultadoEnvio r3 = service.enviar("test@test.com", null, TipoNotificacion.RECUPERACION_PASSWORD, "", null);
+
+        assertTrue(r1.exitoso());
+        assertTrue(r2.exitoso());
+        assertTrue(r3.exitoso());
+    }
 }

@@ -91,3 +91,10 @@ def test_e2e_catalogo_inversiones():
     assert response.status_code == 200
     data = response.json()
     assert len(data["opciones"]) > 0
+
+    res_err = client.post("/api/analitica/inversiones/simular", json={})
+    assert res_err.status_code == 422
+    err_body = res_err.json()
+    assert err_body["type"] == "about:blank"
+    assert err_body["status"] == 422
+    assert err_body["instance"] == "/api/analitica/inversiones/simular"

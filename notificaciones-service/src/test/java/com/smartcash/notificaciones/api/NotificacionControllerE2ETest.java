@@ -1,6 +1,7 @@
 package com.smartcash.notificaciones.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smartcash.notificaciones.api.controllers.GlobalExceptionHandler;
 import com.smartcash.notificaciones.api.controllers.NotificacionController;
 import com.smartcash.notificaciones.api.dto.NotificacionEmailRequestDTO;
 import com.smartcash.notificaciones.application.services.EnviarNotificacionService;
@@ -36,7 +37,9 @@ class NotificacionControllerE2ETest {
         EnviarNotificacionService service = new EnviarNotificacionService(proveedorEmailMock);
         NotificacionController controller = new NotificacionController(service);
 
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
         objectMapper = new ObjectMapper();
     }
 
@@ -136,6 +139,11 @@ class NotificacionControllerE2ETest {
         mockMvc.perform(post("/api/notificaciones/email")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("about:blank"))
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").exists())
+                .andExpect(jsonPath("$.instance").value("/api/notificaciones/email"));
     }
 }

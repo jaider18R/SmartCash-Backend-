@@ -1,33 +1,46 @@
 package com.smartcash.transacciones.api.controllers;
 
+import com.smartcash.transacciones.domain.exceptions.MetaAhorroInvalidaException;
 import com.smartcash.transacciones.domain.exceptions.TransaccionInvalidaException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(TransaccionInvalidaException.class)
-    public ResponseEntity<Map<String, String>> handleTransaccionInvalida(TransaccionInvalidaException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+    public ResponseEntity<Map<String, Object>> handleTransaccionInvalida(TransaccionInvalidaException ex, HttpServletRequest request) {
+        return construirError(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(com.smartcash.transacciones.domain.exceptions.MetaAhorroInvalidaException.class)
-    public ResponseEntity<Map<String, String>> handleMetaAhorroInvalida(com.smartcash.transacciones.domain.exceptions.MetaAhorroInvalidaException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+    @ExceptionHandler(MetaAhorroInvalidaException.class)
+    public ResponseEntity<Map<String, Object>> handleMetaAhorroInvalida(MetaAhorroInvalidaException ex, HttpServletRequest request) {
+        return construirError(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidaciones(MethodArgumentNotValidException ex) {
+    public ResponseEntity<Map<String, Object>> handleValidaciones(MethodArgumentNotValidException ex, HttpServletRequest request) {
         String mensaje = ex.getBindingResult().getFieldErrors().stream()
                 .map(err -> err.getDefaultMessage())
                 .findFirst()
                 .orElse("Datos invalidos en la solicitud");
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", mensaje));
+        return construirError(HttpStatus.BAD_REQUEST, mensaje, request);
+    }
+
+    private ResponseEntity<Map<String, Object>> construirError(HttpStatus status, String detail, HttpServletRequest request) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("type", "about:blank");
+        body.put("title", status.getReasonPhrase());
+        body.put("status", status.value());
+        body.put("detail", detail);
+        body.put("instance", request.getRequestURI());
+        return ResponseEntity.status(status).body(body);
     }
 }

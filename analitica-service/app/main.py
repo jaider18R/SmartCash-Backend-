@@ -1,6 +1,9 @@
 from datetime import date
-from fastapi import FastAPI, Header, HTTPException, Query
+from http import HTTPStatus
+from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from typing import Optional
 
 from app.api.schemas import (
@@ -38,6 +41,36 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "type": "about:blank",
+            "title": HTTPStatus(exc.status_code).phrase,
+            "status": exc.status_code,
+            "detail": str(exc.detail),
+            "instance": request.url.path,
+        },
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errores = exc.errors()
+    detalle = errores[0].get("msg", "Datos invalidos en la solicitud") if errores else "Datos invalidos en la solicitud"
+    return JSONResponse(
+        status_code=422,
+        content={
+            "type": "about:blank",
+            "title": HTTPStatus(422).phrase,
+            "status": 422,
+            "detail": detalle,
+            "instance": request.url.path,
+        },
+    )
 
 transacciones_client = TransaccionesHttpAdapter()
 motor = MotorAnalitica()

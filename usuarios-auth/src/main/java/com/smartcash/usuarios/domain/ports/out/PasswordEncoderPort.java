@@ -1,4 +1,4 @@
-package com.smartcash.usuarios.domain.ports.out;
+    package com.smartcash.usuarios.domain.ports.out;
 
 public interface PasswordEncoderPort {
     String encriptar(String passwordPlano);

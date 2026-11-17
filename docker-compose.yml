@@ -3,19 +3,28 @@ services:
     image: postgres:16-alpine
     container_name: smartcash-postgres
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartcash_db_pass_2026}
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env}
+      USUARIOS_DB_NAME: ${USUARIOS_DB_NAME:-usuarios_db}
+      USUARIOS_DB_USER: ${USUARIOS_DB_USER:?Defina USUARIOS_DB_USER en .env}
+      USUARIOS_DB_PASSWORD: ${USUARIOS_DB_PASSWORD:?Defina USUARIOS_DB_PASSWORD en .env}
+      TRANSACCIONES_DB_NAME: ${TRANSACCIONES_DB_NAME:-transacciones_db}
+      TRANSACCIONES_DB_USER: ${TRANSACCIONES_DB_USER:?Defina TRANSACCIONES_DB_USER en .env}
+      TRANSACCIONES_DB_PASSWORD: ${TRANSACCIONES_DB_PASSWORD:?Defina TRANSACCIONES_DB_PASSWORD en .env}
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     networks:
       - smartcash-net
 
@@ -26,10 +35,22 @@ services:
     image: smartcash/categorizacion-service:1.0.0
     container_name: smartcash-categorizacion
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "8000"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
+    environment:
+      DATABASE_URL: sqlite:////app/data/categorizacion_db.sqlite
     volumes:
       - categorizacion_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - smartcash-net
 
@@ -40,10 +61,20 @@ services:
     image: smartcash/notificaciones-service:1.0.0
     container_name: smartcash-notificaciones
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "8083"
     ports:
-      - "8083:8083"
+      - "127.0.0.1:8083:8083"
     environment:
-      EMAIL_API_KEY: ${EMAIL_API_KEY:-mock-key}
+      EMAIL_API_KEY: ${EMAIL_API_KEY:?Defina EMAIL_API_KEY en .env}
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8083/api/notificaciones/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
     networks:
       - smartcash-net
 
@@ -54,19 +85,29 @@ services:
     image: smartcash/usuarios-auth:1.0.0
     container_name: smartcash-usuarios-auth
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "8081"
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/usuarios_db
-      SPRING_DATASOURCE_USERNAME: usuarios_user
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-smartcash_db_pass_2026}
-      SMARTCASH_JWT_SECRET: ${JWT_SECRET:-tu_clave_secreta_super_segura_de_al_menos_256_bits_smartcash_2026}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/${USUARIOS_DB_NAME:-usuarios_db}
+      SPRING_DATASOURCE_USERNAME: ${USUARIOS_DB_USER:?Defina USUARIOS_DB_USER en .env}
+      SPRING_DATASOURCE_PASSWORD: ${USUARIOS_DB_PASSWORD:?Defina USUARIOS_DB_PASSWORD en .env}
+      SMARTCASH_JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en .env}
       SMARTCASH_SERVICIOS_NOTIFICACIONES_URL: http://notificaciones-service:8083
     depends_on:
       postgres-db:
         condition: service_healthy
       notificaciones-service:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8081/v3/api-docs || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - smartcash-net
 
@@ -77,20 +118,32 @@ services:
     image: smartcash/transacciones-service:1.0.0
     container_name: smartcash-transacciones
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "8082"
     ports:
-      - "8082:8082"
+      - "127.0.0.1:8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/transacciones_db
-      SPRING_DATASOURCE_USERNAME: transacciones_user
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-smartcash_db_pass_2026}
-      SMARTCASH_JWT_SECRET: ${JWT_SECRET:-tu_clave_secreta_super_segura_de_al_menos_256_bits_smartcash_2026}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/${TRANSACCIONES_DB_NAME:-transacciones_db}
+      SPRING_DATASOURCE_USERNAME: ${TRANSACCIONES_DB_USER:?Defina TRANSACCIONES_DB_USER en .env}
+      SPRING_DATASOURCE_PASSWORD: ${TRANSACCIONES_DB_PASSWORD:?Defina TRANSACCIONES_DB_PASSWORD en .env}
+      SMARTCASH_JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en .env}
       SMARTCASH_SERVICIOS_CATEGORIZACION_URL: http://categorizacion-service:8000
       SMARTCASH_SERVICIOS_NOTIFICACIONES_URL: http://notificaciones-service:8083
     depends_on:
       postgres-db:
         condition: service_healthy
       categorizacion-service:
-        condition: service_started
+        condition: service_healthy
+      notificaciones-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8082/v3/api-docs || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - smartcash-net
 
@@ -101,12 +154,23 @@ services:
     image: smartcash/analitica-service:1.0.0
     container_name: smartcash-analitica
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "8084"
     ports:
-      - "8084:8084"
+      - "127.0.0.1:8084:8084"
     environment:
       TRANSACCIONES_SERVICE_URL: http://transacciones-service:8082
     depends_on:
-      - transacciones-service
+      transacciones-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8084/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - smartcash-net
 
@@ -117,12 +181,23 @@ services:
     image: smartcash/frontend:1.0.0
     container_name: smartcash-frontend
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
-      - "5173:80"
+      - "${FRONTEND_PORT:-5173}:80"
     depends_on:
-      - usuarios-auth
-      - transacciones-service
-      - analitica-service
+      usuarios-auth:
+        condition: service_healthy
+      transacciones-service:
+        condition: service_healthy
+      analitica-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - smartcash-net
 

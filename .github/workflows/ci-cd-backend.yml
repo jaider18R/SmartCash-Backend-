@@ -1,0 +1,90 @@
+name: CI/CD Backend SmartCash
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  java-services-ci:
+    name: Build y Tests Java (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - usuarios-auth
+          - transacciones-service
+          - notificaciones-service
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Ejecutar pruebas unitarias y cobertura JaCoCo
+        working-directory: ${{ matrix.service }}
+        run: mvn test -B
+
+      - name: Empaquetar artefacto JAR
+        working-directory: ${{ matrix.service }}
+        run: mvn package -DskipTests -B
+
+      - name: Validar Dockerfile
+        run: docker build --check ./${{ matrix.service }} || true
+
+  python-services-ci:
+    name: Tests Python (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - categorizacion-service
+          - analitica-service
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Instalar dependencias
+        working-directory: ${{ matrix.service }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest httpx pytest-cov
+
+      - name: Ejecutar pruebas unitarias (pytest)
+        working-directory: ${{ matrix.service }}
+        run: pytest -v
+
+  deploy-oracle:
+    name: Despliegue en Oracle Cloud (157.137.205.42)
+    needs: [ java-services-ci, python-services-ci ]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.ORACLE_SSH_KEY != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Desplegar Backend por SSH en Oracle VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 157.137.205.42
+          username: ubuntu
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            cd ~/Smartcash/smartcash-backend
+            git pull origin main || git pull origin master || true
+            cd ~/Smartcash
+            docker compose up -d --build usuarios-auth transacciones-service notificaciones-service categorizacion-service analitica-service
+            docker compose ps

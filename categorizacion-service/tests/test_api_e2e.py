@@ -77,3 +77,14 @@ def test_e2e_ocr_factura_invalida():
         json={"imagen_base64": "a", "nombre_archivo": "recibo.png"}
     )
     assert res.status_code == 400
+    body = res.json()
+    assert body["type"] == "about:blank"
+    assert body["title"] == "Bad Request"
+    assert body["status"] == 400
+    assert "detail" in body
+    assert body["instance"] == "/ocr/factura"
+
+    res_val = client.post("/clasificar", json={})
+    assert res_val.status_code == 422
+    assert res_val.json()["type"] == "about:blank"
+    assert res_val.json()["status"] == 422

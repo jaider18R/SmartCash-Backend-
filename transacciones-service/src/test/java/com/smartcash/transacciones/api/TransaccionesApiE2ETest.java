@@ -163,7 +163,11 @@ class TransaccionesApiE2ETest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Transaccion no encontrada"));
+                .andExpect(jsonPath("$.type").value("about:blank"))
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value("Transaccion no encontrada"))
+                .andExpect(jsonPath("$.instance").value("/transacciones/" + idTx));
     }
 
     @Test
@@ -226,7 +230,11 @@ class TransaccionesApiE2ETest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(reqMov)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Saldo insuficiente"));
+                .andExpect(jsonPath("$.type").value("about:blank"))
+                .andExpect(jsonPath("$.title").value("Bad Request"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value("Saldo insuficiente"))
+                .andExpect(jsonPath("$.instance").value("/api/metas-ahorro/" + idMeta + "/retirar"));
 
         mockMvc.perform(delete("/api/metas-ahorro/" + idMeta).principal(auth))
                 .andExpect(status().isNoContent());
